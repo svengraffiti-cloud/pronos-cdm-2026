@@ -511,7 +511,7 @@ export default function Home() {
                   <select
                     value={selectedPlayer}
                     onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="mt-4 w-full rounded-2xl bg-slate-950/70 p-4 text-white"
+                    className="mt-4 w-full rounded-2xl bg-[#12091f]/70 p-4 text-white"
                   >
                     {players.map((player) => (
                       <option key={player.id} value={player.id}>
@@ -581,7 +581,7 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-slate-950/70 p-4 text-center text-xl font-black text-white"
+                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
                           />
 
                           <span className="text-2xl font-black">-</span>
@@ -600,7 +600,7 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-slate-950/70 p-4 text-center text-xl font-black text-white"
+                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
                           />
 
                           <button
@@ -628,7 +628,7 @@ export default function Home() {
                   .map((player, index) => (
                     <div
                       key={player.id}
-                      className="mb-3 flex items-center justify-between rounded-2xl bg-slate-950/60 p-4"
+                      className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/60 p-4"
                     >
                       <span>
                         {index + 1}. {player.name}
@@ -735,7 +735,7 @@ export default function Home() {
                     {getQualifiedTeams().map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl bg-slate-950/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/60 p-4"
                       >
                         <p className="text-sm text-blue-300">{item.label}</p>
                         <p className="text-xl font-black">{item.team}</p>
@@ -751,7 +751,7 @@ export default function Home() {
                     {knockoutMatches.map((match) => (
                       <div
                         key={match.id}
-                        className="rounded-2xl bg-slate-950/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/60 p-4"
                       >
                         <div className="mb-2 inline-flex rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">
                           {roundLabels[match.stage] || match.stage}
@@ -795,7 +795,7 @@ export default function Home() {
                       value={newPlayer}
                       onChange={(e) => setNewPlayer(e.target.value)}
                       placeholder="Nom du joueur"
-                      className="flex-1 rounded-2xl bg-slate-950/70 p-4 text-white"
+                      className="flex-1 rounded-2xl bg-[#12091f]/70 p-4 text-white"
                     />
 
                     <button
@@ -816,7 +816,7 @@ export default function Home() {
                     {matches.map((match) => (
                       <div
                         key={match.id}
-                        className="rounded-2xl bg-slate-950/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/60 p-4"
                       >
                         <div className="mb-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
                           {match.stage === "GROUP"
