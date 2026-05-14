@@ -453,7 +453,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
       <div className="mx-auto max-w-7xl px-5 py-8">
-        <header className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
+        <header className="mb-8 rounded-3xl border border-white/10  p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-3 inline-flex rounded-full bg-blue-500/20 px-4 py-2 text-sm font-semibold text-blue-200">
@@ -489,7 +489,7 @@ export default function Home() {
               key={item}
               onClick={() => setTab(item)}
               className={`rounded-2xl px-4 py-3 font-bold capitalize ${
-                tab === item ? "bg-blue-600" : "bg-white/10"
+                tab === item ? "bg-[#7c3aed]" : ""
               }`}
             >
               {item}
@@ -498,14 +498,14 @@ export default function Home() {
         </nav>
 
         {loading ? (
-          <div className="rounded-3xl bg-white/10 p-6">
+          <div className="rounded-3xl  p-6">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
           <>
             {tab === "pronos" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-6">
+                <div className="rounded-3xl border border-white/10  p-6">
                   <h2 className="text-2xl font-bold">Choisir le joueur</h2>
 
                   <select
@@ -530,9 +530,9 @@ export default function Home() {
                     return (
                       <div
                         key={match.id}
-                        className="rounded-3xl border border-white/10 bg-white/10 p-6"
+                        className="rounded-3xl border border-white/10  p-6"
                       >
-                        <div className="mb-3 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
+                        <div className="mb-3 inline-flex rounded-full bg-bluebg-[#8b5cf6]500/20 px-3 py-1 text-sm font-semibold text-blue-200">
                           {match.stage === "GROUP"
                             ? `Groupe ${match.group_name}`
                             : roundLabels[match.stage] || match.stage}
@@ -617,7 +617,7 @@ export default function Home() {
                 </div>
               </section>
             )}            {tab === "classement" && (
-              <section className="rounded-3xl border border-white/10 bg-white/10 p-6">
+              <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
                 <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
                   <Trophy className="h-6 w-6 text-yellow-400" />
                   Classement joueurs
@@ -647,7 +647,7 @@ export default function Home() {
                   return (
                     <div
                       key={groupName}
-                      className="rounded-3xl border border-white/10 bg-white/10 p-6"
+                      className="rounded-3xl border border-white/10  p-6"
                     >
                       <h2 className="mb-4 text-2xl font-black">
                         Groupe {groupName}
@@ -720,7 +720,7 @@ export default function Home() {
 
             {tab === "tableau" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-6">
+                <div className="rounded-3xl border border-white/10  p-6">
                   <h2 className="text-2xl font-black">
                     Équipes qualifiées provisoires
                   </h2>
@@ -744,7 +744,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-6">
+                <div className="rounded-3xl border border-white/10  p-6">
                   <h2 className="mb-5 text-2xl font-black">Tableau final</h2>
 
                   <div className="grid gap-5 md:grid-cols-2">
@@ -784,7 +784,7 @@ export default function Home() {
 
             {tab === "admin" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-6">
+                <div className="rounded-3xl border border-white/10  p-6">
                   <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
                     <Settings className="h-6 w-6" />
                     Ajouter un joueur
@@ -807,7 +807,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-6">
+                <div className="rounded-3xl border border-white/10  p-6">
                   <h2 className="mb-5 text-2xl font-bold">
                     Résultats officiels
                   </h2>
