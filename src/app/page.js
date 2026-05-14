@@ -459,9 +459,17 @@ export default function Home() {
               <div className="mb-3 inline-flex rounded-full bg-blue-500/20 px-4 py-2 text-sm font-semibold text-blue-200">
                 Coupe du Monde 2026
               </div>
-              <h1 className="text-4xl font-black tracking-tight md:text-6xl">
-                Pronos Famille
-              </h1>
+             <div className="flex items-center gap-4">
+  <img
+    src="/logo.png"
+    alt="Logo"
+    className="h-16 w-16 rounded-2xl"
+  />
+
+  <h1 className="text-4xl font-black tracking-tight md:text-6xl">
+    Pronos Famille
+  </h1>
+</div>
               <p className="mt-3 text-slate-300">
                 Pronostics, scores, groupes et tableau final.
               </p>
