@@ -767,7 +767,7 @@ const isMatchLocked = (matchDate) => {
               </section>
            
 
-            {tab === "tableau" && (
+          
              {tab === "admin" && (
   <section className="space-y-6">
     <div className="rounded-3xl border border-white/10 p-6">
