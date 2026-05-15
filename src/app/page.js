@@ -657,37 +657,39 @@ className={`rounded-3xl border p-6 ${
                             onClick={() => savePrediction(match)}
                             disabled={locked}
                             className="rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-40"
-                          >
-                            Valider
-                         </button>
-     
-    </div>
-  </div>
+           >
+  Valider
+</button>
+
+</div>
+</div>
 )}
 
 </section>
 
-</>
 {tab === "classement" && (
-              <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
-                <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
-                  <Trophy className="h-6 w-6 text-yellow-400" />
-                  Classement joueurs
-                </h2>
+  <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
+    <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
+      <Trophy className="h-6 w-6 text-yellow-400" />
+      Classement joueurs
+    </h2>
 
-                {[...players]
-                  .sort((a, b) => playerTotal(b.id) - playerTotal(a.id))
-                  .map((player, index) => (
-                    <div
-                      key={player.id}
-                      className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/60 p-4"
-                    >
-                      <span>
-                        {index + 1}. {player.name}
-                      </span>
-                      <strong>{playerTotal(player.id)} pts</strong>
-                    </div>
-                  ))}
+    {[...players]
+      .sort((a, b) => playerTotal(b.id) - playerTotal(a.id))
+      .map((player, index) => (
+        <div
+          key={player.id}
+          className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/60 p-4"
+        >
+          <span>
+            {index + 1}. {player.name}
+          </span>
+
+          <strong>{playerTotal(player.id)} pts</strong>
+        </div>
+      ))}
+  </section>
+)}
               </section>
             )}
 
