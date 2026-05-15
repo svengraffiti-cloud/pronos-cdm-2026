@@ -768,164 +768,97 @@ const isMatchLocked = (matchDate) => {
            
 
             {tab === "tableau" && (
-              <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10  p-6">
-                  <h2 className="text-2xl font-black">
-                    Équipes qualifiées provisoires
-                  </h2>
+             {tab === "admin" && (
+  <section className="space-y-6">
+    <div className="rounded-3xl border border-white/10 p-6">
+      <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
+        <Settings className="h-6 w-6" />
+        Ajouter un joueur
+      </h2>
 
-                  <p className="mt-2 text-sm text-slate-300">
-                    Pour l’instant, les deux premiers de chaque groupe sont
-                    listés automatiquement. On ajoutera ensuite les meilleurs
-                    troisièmes et l’ordre officiel des 16es.
-                  </p>
+      <div className="flex gap-3">
+        <input
+          value={newPlayer}
+          onChange={(e) => setNewPlayer(e.target.value)}
+          placeholder="Nom du joueur"
+          className="flex-1 rounded-2xl bg-[#12091f]/70 p-4 text-white"
+        />
 
-                  <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    {getQualifiedTeams().map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
-                      >
-                        <p className="text-sm text-blue-300">{item.label}</p>
-                        <p className="text-xl font-black">{item.team}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-white/10  p-6">
-                  <h2 className="mb-5 text-2xl font-black">Tableau final</h2>
-
-                  <div className="grid gap-5 md:grid-cols-2">
-                    {knockoutMatches.map((match) => (
-                      <div
-                        key={match.id}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
-                      >
-                        <div className="mb-2 inline-flex rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">
-                          {roundLabels[match.stage] || match.stage}
-                        </div>
-
-                        <h3 className="text-xl font-black">
-                          {match.home_team} - {match.away_team}
-                        </h3>
-
-                        <p className="mt-2 text-sm text-slate-300">
-                          {formatDate(match.match_date)}
-                        </p>
-
-                        <p className="mt-3">
-                          Score :{" "}
-                          <strong>
-                            {match.home_score ?? "-"} - {match.away_score ?? "-"}
-                          </strong>
-                        </p>
-
-                        <p className="mt-2 text-sm text-emerald-300">
-                          Qualifié : {getWinner(match) || "à déterminer"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {tab === "admin" && (
-              <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10  p-6">
-                  <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
-                    <Settings className="h-6 w-6" />
-                    Ajouter un joueur
-                  </h2>
-
-                  <div className="flex gap-3">
-                    <input
-                      value={newPlayer}
-                      onChange={(e) => setNewPlayer(e.target.value)}
-                      placeholder="Nom du joueur"
-                      className="flex-1 rounded-2xl bg-[#12091f]/70 p-4 text-white"
-                    />
-
-                    <button
-                      onClick={addPlayer}
-                      className="rounded-2xl bg-blue-600 px-5 py-4 font-bold"
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-white/10  p-6">
-                  <h2 className="mb-5 text-2xl font-bold">
-                    Résultats officiels
-                  </h2>
-
-                  <div className="space-y-4">
-                    {matches.map((match) => (
-                      <div
-                        key={match.id}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
-                      >
-                        <div className="mb-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
-                          {match.stage === "GROUP"
-                            ? `Groupe ${match.group_name}`
-                            : roundLabels[match.stage] || match.stage}
-                        </div>
-
-                        <h3 className="font-bold">
-                          {match.home_team} - {match.away_team}
-                        </h3>
-
-                        <div className="mt-3 flex items-center gap-3">
-                          <input
-                            type="number"
-                            min="0"
-                            value={scores[match.id]?.officialHome ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  officialHome: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
-                          />
-
-                          <span>-</span>
-
-                          <input
-                            type="number"
-                            min="0"
-                            value={scores[match.id]?.officialAway ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  officialAway: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
-                          />
-
-                          <button
-                            onClick={() => saveOfficialScore(match.id)}
-                            className="rounded-2xl bg-emerald-600 px-4 py-3 font-bold"
-                          >
-                            Enregistrer
-                          </button>
-                        </div>
-                      </div>
-  
-            ))}
-          </div>
-        </section>
- 
+        <button
+          onClick={addPlayer}
+          className="rounded-2xl bg-blue-600 px-5 py-4 font-bold"
+        >
+          Ajouter
+        </button>
+      </div>
     </div>
-  </main>
+
+    <div className="rounded-3xl border border-white/10 p-6">
+      <h2 className="mb-5 text-2xl font-bold">Résultats officiels</h2>
+
+      <div className="space-y-4">
+        {matches.map((match) => (
+          <div key={match.id} className="rounded-2xl bg-[#12091f]/60 p-4">
+            <div className="mb-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
+              {match.stage === "GROUP"
+                ? `Groupe ${match.group_name}`
+                : roundLabels[match.stage] || match.stage}
+            </div>
+
+            <h3 className="font-bold">
+              {match.home_team} - {match.away_team}
+            </h3>
+
+            <div className="mt-3 flex items-center gap-3">
+              <input
+                type="number"
+                min="0"
+                value={scores[match.id]?.officialHome ?? ""}
+                onChange={(e) =>
+                  setScores({
+                    ...scores,
+                    [match.id]: {
+                      ...scores[match.id],
+                      officialHome: e.target.value,
+                    },
+                  })
+                }
+                className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
+              />
+
+              <span>-</span>
+
+              <input
+                type="number"
+                min="0"
+                value={scores[match.id]?.officialAway ?? ""}
+                onChange={(e) =>
+                  setScores({
+                    ...scores,
+                    [match.id]: {
+                      ...scores[match.id],
+                      officialAway: e.target.value,
+                    },
+                  })
+                }
+                className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
+              />
+
+              <button
+                onClick={() => saveOfficialScore(match.id)}
+                className="rounded-2xl bg-emerald-600 px-4 py-3 font-bold"
+              >
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
+
+</div>
+</main>
 );
 }
