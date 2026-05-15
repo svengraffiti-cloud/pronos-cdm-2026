@@ -526,8 +526,12 @@ const isMatchLocked = (matchDate) => {
                 tab === item ? "bg-[#7c3aed]" : ""
               }`}
             >
-              {item}
-           {tab === "pronos" && (
+             {item}
+</button>
+))}
+
+{tab === "pronos" && (
+         
   <section className="space-y-6">
     <div className="rounded-3xl border border-white/10 p-6">
       <h2 className="text-2xl font-bold">Choisir le joueur</h2>
