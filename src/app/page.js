@@ -555,7 +555,7 @@ const isMatchLocked = (matchDate) => {
                         <p className="mt-2 text-sm text-slate-300">
                           {formatDate(match.match_date)}
                         </p>
-
+const locked = isMatchLocked(match.match_date);
                         <p
                           className={`mt-2 font-bold ${
                             locked ? "text-red-400" : "text-emerald-400"
