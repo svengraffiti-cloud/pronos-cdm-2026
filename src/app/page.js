@@ -15,6 +15,25 @@ import {
   Lock,
 } from "lucide-react";
 
+function AppShell({ children }) {
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
+      <div className="fixed inset-0 -z-20">
+        <img
+          src="/stadium.jpg"
+          alt="Stade"
+          className="h-full w-full object-cover opacity-70"
+        />
+      </div>
+
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e88,transparent_34%),radial-gradient(circle_at_bottom_right,#7c3aed88,transparent_36%),linear-gradient(135deg,#020617cc,#1e0b38d9_45%,#064e3bcc)]" />
+      <div className="fixed inset-0 -z-10 bg-black/25 backdrop-blur-[1px]" />
+
+      {children}
+    </main>
+  );
+}
+
 export default function Home() {
   const [session, setSession] = useState(null);
   const [authMode, setAuthMode] = useState("login");
@@ -705,28 +724,9 @@ export default function Home() {
     return "Vainqueur à définir";
   }
 
-  function Shell({ children }) {
-    return (
-      <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
-        <div className="fixed inset-0 -z-20">
-          <img
-            src="/stadium.jpg"
-            alt="Stade"
-            className="h-full w-full object-cover opacity-70"
-          />
-        </div>
-
-        <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e88,transparent_34%),radial-gradient(circle_at_bottom_right,#7c3aed88,transparent_36%),linear-gradient(135deg,#020617cc,#1e0b38d9_45%,#064e3bcc)]" />
-        <div className="fixed inset-0 -z-10 bg-black/25 backdrop-blur-[1px]" />
-
-        {children}
-      </main>
-    );
-  }
-
   if (authLoading) {
     return (
-      <Shell>
+      <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
             <img
@@ -740,13 +740,13 @@ export default function Home() {
             </p>
           </div>
         </div>
-      </Shell>
+      </AppShell>
     );
   }
 
   if (!session) {
     return (
-      <Shell>
+      <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
@@ -847,13 +847,13 @@ export default function Home() {
             </form>
           </div>
         </div>
-      </Shell>
+      </AppShell>
     );
   }
 
   if (!profile || !currentPlayer) {
     return (
-      <Shell>
+      <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
@@ -909,12 +909,12 @@ export default function Home() {
             </form>
           </div>
         </div>
-      </Shell>
+      </AppShell>
     );
   }
 
   return (
-    <Shell>
+    <AppShell>
       <div className="mx-auto max-w-7xl space-y-8 p-6">
         <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
@@ -1469,6 +1469,6 @@ export default function Home() {
           </>
         )}
       </div>
-    </Shell>
+    </AppShell>
   );
 }
