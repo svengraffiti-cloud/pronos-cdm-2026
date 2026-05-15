@@ -460,7 +460,7 @@ const isMatchLocked = (matchDate) => {
   className="min-h-screen text-white"
   style={{
     backgroundImage:
-      'linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.95)), url("https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1800&q=80")',
+'linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.95)), url("/stadium.jpg")',
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundAttachment: "fixed",
