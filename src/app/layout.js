@@ -1,3 +1,14 @@
+export const metadata = {
+  title: "Les Pronos de Papy",
+  description: "Application privée de pronostics Coupe du Monde 2026",
+  manifest: "/manifest.json",
+  themeColor: "#16a34a",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Les Pronos de Papy",
+  },
+};
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
