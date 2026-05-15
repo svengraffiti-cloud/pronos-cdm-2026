@@ -662,8 +662,8 @@ className={`rounded-3xl border p-6 ${
 </button>
 </div>
 </div>
-);
-})}
+))
+}
 </section>
 )}
 
