@@ -844,7 +844,7 @@ const isMatchLocked = (matchDate) => {
                 className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
               />
 
-              <button
+                          <button
                 onClick={() => saveOfficialScore(match.id)}
                 className="rounded-2xl bg-emerald-600 px-4 py-3 font-bold"
               >
@@ -853,10 +853,9 @@ const isMatchLocked = (matchDate) => {
             </div>
           </div>
         ))}
-
-    </div>
-  </section>
-      )}
+      </div>
+    </section>
+)}
 
 </div>
 </main>
