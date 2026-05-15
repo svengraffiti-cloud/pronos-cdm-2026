@@ -1,40 +1,35 @@
-const NOTIFICATION_PREFIX = "pronos_papy_notification_";
+export async function askNotificationPermission() {
+  if (typeof window === "undefined") return false;
+  if (!("Notification" in window)) return false;
 
-const REMINDERS = [
-  {
-    type: "J-1",
-    offsetMinutes: 24 * 60,
-    title: "Prono à faire 👀",
-    body: "Le match commence demain. Fais ton prono avant qu’il soit trop tard !",
-  },
-  {
-    type: "H-4",
-    offsetMinutes: 4 * 60,
-    title: "Plus que 4h ⏰",
-    body: "Il te reste 4h pour faire ton prono.",
-  },
-  {
-    type: "H-30",
-    offsetMinutes: 30,
-    title: "LAST MINUTE 🚨",
-    body: "Dernière chance : fais ton prono maintenant !",
-  },
-];
+  if (Notification.permission === "granted") {
+    return true;
+  }
 
-function getNotificationKey(userId, matchId, type) {
-  return `${NOTIFICATION_PREFIX}${userId}_${matchId}_${type}`;
+  if (Notification.permission === "denied") {
+    return false;
+  }
+
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
 }
 
-function hasNotificationAlreadyBeenSent(userId, matchId, type) {
-  if (typeof window === "undefined") return true;
-
-  return localStorage.getItem(
-    getNotificationKey(userId, matchId, type)
-  ) === "sent";
+export function schedulePronoNotifications() {
+  // SÉCURITÉ ANTI-SPAM
+  // Notifications automatiques désactivées temporairement.
+  // On ne programme aucune notification depuis le téléphone.
+  return;
 }
 
-function markNotificationAsSent(userId, matchId, type) {
+export function clearOldPronoNotifications() {
   if (typeof window === "undefined") return;
+
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith("pronos_papy_notification_")) {
+      localStorage.removeItem(key);
+    }
+  });
+}  if (typeof window === "undefined") return;
 
   localStorage.setItem(
     getNotificationKey(userId, matchId, type),
