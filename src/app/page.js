@@ -533,10 +533,9 @@ const isMatchLocked = (matchDate) => {
 
                 <div className="grid gap-5 md:grid-cols-2">
                   {matches.map((match) => {
-                    const locked = isLocked(match.match_date);
+const locked = isMatchLocked(match.match_date);
                     const prediction = getPrediction(match.id);
                     const localScore = scores[match.id] || {};
-
                     return (
                       <div
                         key={match.id}
@@ -555,7 +554,7 @@ const isMatchLocked = (matchDate) => {
                         <p className="mt-2 text-sm text-slate-300">
                           {formatDate(match.match_date)}
                         </p>
-const locked = isMatchLocked(match.match_date);
+
                         <p
                           className={`mt-2 font-bold ${
                             locked ? "text-red-400" : "text-emerald-400"
