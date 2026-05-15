@@ -761,7 +761,7 @@ const isMatchLocked = (matchDate) => {
                   );
                 })}
               </section>
-            )}
+           
 
             {tab === "tableau" && (
               <section className="space-y-6">
@@ -921,7 +921,7 @@ const isMatchLocked = (matchDate) => {
                 </div>
               </section>
             )}
-          </>
+         
         )}
       </div>
     </main>
