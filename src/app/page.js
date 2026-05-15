@@ -497,7 +497,18 @@ const isMatchLocked = (matchDate) => {
           {["pronos", "classement", "groupes", "tableau", "admin"].map((item) => (
             <button
               key={item}
-              onClick={() => setTab(item)}
+              onClick={() => {
+  if (item === "admin") {
+    const password = prompt("Mot de passe admin");
+
+    if (password !== "SVEN2026") {
+      alert("Accès refusé");
+      return;
+    }
+  }
+
+  setTab(item);
+}}
               className={`rounded-2xl px-4 py-3 font-bold capitalize ${
                 tab === item ? "bg-[#7c3aed]" : ""
               }`}
