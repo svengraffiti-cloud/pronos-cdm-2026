@@ -29,12 +29,7 @@ export function clearOldPronoNotifications() {
       localStorage.removeItem(key);
     }
   });
-}  if (typeof window === "undefined") return;
-
-  localStorage.setItem(
-    getNotificationKey(userId, matchId, type),
-    "sent"
-  );
+}  );
 }
 
 function userHasPredicted(matchId, predictions = []) {
