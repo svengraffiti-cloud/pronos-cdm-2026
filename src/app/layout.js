@@ -6,8 +6,12 @@ export const metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/icon-192.png",
-    apple: "/icon-512.png",
+    apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({ children }) {
