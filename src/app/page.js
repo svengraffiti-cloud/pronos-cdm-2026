@@ -922,7 +922,7 @@ const isMatchLocked = (matchDate) => {
               </section>
             )}
          
-        )}
+    
       </div>
     </main>
   );
