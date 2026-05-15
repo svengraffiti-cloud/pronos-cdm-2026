@@ -20,6 +20,9 @@ export default function Home() {
 const isMatchLocked = (matchDate) => {
   return new Date(matchDate).getTime() <= Date.now();
 };
+  const isMatchFinished = (match) => {
+  return match.home_score !== null && match.away_score !== null;
+};
   const [selectedPlayer, setSelectedPlayer] =
     useState("");
 
@@ -545,19 +548,27 @@ const isMatchLocked = (matchDate) => {
                 <div className="grid gap-5 md:grid-cols-2">
                   {matches.map((match) => {
 const locked = isMatchLocked(match.match_date);
+                    const finished = isMatchFinished(match);
                     const prediction = getPrediction(match.id);
                     const localScore = scores[match.id] || {};
                     return (
                       <div
                         key={match.id}
-                        className="rounded-3xl border border-white/10  p-6"
-                      >
+className={`rounded-3xl border p-6 ${
+  finished
+    ? "border-slate-700 bg-slate-900/60 opacity-70"
+    : "border-white/10"
+}`}                      >
                         <div className="mb-3 inline-flex rounded-full bg-bluebg-[#8b5cf6]500/20 px-3 py-1 text-sm font-semibold text-blue-200">
                           {match.stage === "GROUP"
                             ? `Groupe ${match.group_name}`
                             : roundLabels[match.stage] || match.stage}
                         </div>
-
+{finished && (
+  <div className="mb-3 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-bold text-white">
+    TERMINÉ
+  </div>
+)}
                         <h3 className="text-2xl font-black">
                           {match.home_team} - {match.away_team}
                         </h3>
