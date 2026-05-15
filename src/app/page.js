@@ -456,8 +456,8 @@ const isMatchLocked = (matchDate) => {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-      <div className="mx-auto max-w-7xl px-5 py-8">
+<main className="min-h-screen text-white">
+    <div className="mx-auto max-w-7xl px-5 py-8">
         <header className="mb-8 rounded-3xl border border-white/10  p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
