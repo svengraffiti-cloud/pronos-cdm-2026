@@ -456,7 +456,16 @@ const isMatchLocked = (matchDate) => {
   };
 
   return (
-<main className="min-h-screen text-white">
+<main
+  className="min-h-screen text-white"
+  style={{
+    backgroundImage:
+      'linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.95)), url("https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1800&q=80")',
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
+  }}
+>
     <div className="mx-auto max-w-7xl px-5 py-8">
         <header className="mb-8 rounded-3xl border border-white/10  p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
