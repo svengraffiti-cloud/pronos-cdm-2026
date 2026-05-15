@@ -660,7 +660,7 @@ className={`rounded-3xl border p-6 ${
                           >
                             Valider
                          </button>
-      </button>
+     
     </div>
   </div>
 )}
