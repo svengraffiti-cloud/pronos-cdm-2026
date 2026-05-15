@@ -663,9 +663,8 @@ className={`rounded-3xl border p-6 ${
                         </div>
                       </div>
                    )}
-                  })}
+                  
                 </div>
-              </section>
             )}            {tab === "classement" && (
               <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
                 <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
