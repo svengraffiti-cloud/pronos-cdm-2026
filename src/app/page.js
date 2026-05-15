@@ -101,29 +101,21 @@ export default function Home() {
   };
 
   function sendLocalNotification(title, body) {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
-    if (Notification.permission !== "granted") return;
+  // SÉCURITÉ ABSOLUE ANTI-SPAM
+  // Toutes les notifications sont désactivées temporairement.
+  return;
+}
 
-    new Notification(title, {
-      body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-    });
-  }
+async function requestNotifications() {
+  // Notifications désactivées temporairement
+  // pour stopper définitivement les rafales.
 
-  async function requestNotifications() {
-    const accepted = await askNotificationPermission();
+  setNotificationsEnabled(false);
 
-    if (accepted) {
-      setNotificationsEnabled(true);
-      sendLocalNotification(
-        "Notifications activées 🔔",
-        "Tu recevras les rappels de pronos selon les horaires des matchs."
-      );
-    } else {
-      setNotificationsEnabled(false);
-      alert("Notifications refusées sur cet appareil.");
+  alert(
+    "Les notifications sont temporairement désactivées pour maintenance."
+  );
+}
     }
   }
 
