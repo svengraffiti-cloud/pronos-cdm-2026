@@ -485,27 +485,36 @@ export default function Home() {
         <img
           src="/stadium.jpg"
           alt="Stade"
-          className="h-full w-full object-cover opacity-45"
+          className="h-full w-full object-cover opacity-70"
         />
       </div>
 
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e55,transparent_32%),linear-gradient(135deg,#0b0513dd,#35145fdd_48%,#064e3bdd)]" />
-      <div className="fixed inset-0 -z-10 bg-black/35 backdrop-blur-[1px]" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e88,transparent_34%),radial-gradient(circle_at_bottom_right,#7c3aed88,transparent_36%),linear-gradient(135deg,#020617cc,#1e0b38d9_45%,#064e3bcc)]" />
+      <div className="fixed inset-0 -z-10 bg-black/25 backdrop-blur-[1px]" />
 
       <div className="mx-auto max-w-7xl space-y-8 p-6">
-        <header className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-8 shadow-2xl backdrop-blur-md">
+        <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
+          <div className="absolute inset-0 -z-10">
+            <img
+              src="/stadium.jpg"
+              alt="Stade"
+              className="h-full w-full object-cover opacity-35"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
+          </div>
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
           <div className="flex flex-col items-center text-center">
             <img
               src="/logo.png"
               alt="Logo Pronos Famille"
-              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl md:h-36 md:w-36"
+              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
             />
 
             <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
               Coupe du Monde 2026
             </p>
 
-            <h1 className="mt-3 text-5xl font-black tracking-tight md:text-7xl">
+            <h1 className="mt-3 text-5xl font-black tracking-tight drop-shadow-2xl md:text-7xl">
               Pronos Famille
             </h1>
 
@@ -579,8 +588,19 @@ export default function Home() {
         </nav>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin" />
+          <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+            />
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
+            <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
+              Chargement
+            </p>
+            <p className="mt-2 text-slate-300">
+              Préparation des pronos, scores et classements...
+            </p>
           </div>
         ) : (
           <>
