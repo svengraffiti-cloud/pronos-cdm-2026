@@ -17,7 +17,9 @@ export default function Home() {
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [teams, setTeams] = useState([]);
-
+const isMatchLocked = (matchDate) => {
+  return new Date(matchDate).getTime() <= Date.now();
+};
   const [selectedPlayer, setSelectedPlayer] =
     useState("");
 
