@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { Trophy, Users, CalendarDays, Settings, Loader2 } from "lucide-react";
+import { Trophy, Users, CalendarDays, Settings, Loader2, Bell } from "lucide-react";
 
 export default function Home() {
   const [tab, setTab] = useState("pronos");
@@ -14,6 +14,32 @@ export default function Home() {
   const [newPlayer, setNewPlayer] = useState("");
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState({});
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  const roundLabels = {
+    R32: "16es de finale",
+    R16: "8es de finale",
+    QF: "Quarts de finale",
+    SF: "Demi-finales",
+    FINAL: "Finale",
+  };
+
+  const groupNames = useMemo(
+    () => [...new Set(teams.map((team) => team.group_name))],
+    [teams]
+  );
+
+  const knockoutMatches = useMemo(
+    () =>
+      matches
+        .filter((match) => match.stage !== "GROUP")
+        .sort(
+          (a, b) =>
+            new Date(a.match_date) - new Date(b.match_date) ||
+            (a.knockout_order || 0) - (b.knockout_order || 0)
+        ),
+    [matches]
+  );
 
   const isMatchLocked = (matchDate) => {
     return new Date(matchDate).getTime() <= Date.now();
@@ -22,6 +48,40 @@ export default function Home() {
   const isMatchFinished = (match) => {
     return match.home_score !== null && match.away_score !== null;
   };
+
+  function sendLocalNotification(title, body) {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    new Notification(title, {
+      body,
+      icon: "/logo.png",
+      badge: "/logo.png",
+    });
+  }
+
+  async function requestNotifications() {
+    if (typeof window === "undefined") return;
+
+    if (!("Notification" in window)) {
+      alert("Les notifications ne sont pas supportées par ce navigateur.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission === "granted") {
+      setNotificationsEnabled(true);
+      sendLocalNotification(
+        "Notifications activées",
+        "Tu recevras les alertes de pronos sur cet appareil."
+      );
+    } else {
+      setNotificationsEnabled(false);
+      alert("Notifications refusées sur cet appareil.");
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -36,9 +96,7 @@ export default function Home() {
       .select("*")
       .order("match_date", { ascending: true });
 
-    const { data: predictionsData } = await supabase
-      .from("predictions")
-      .select("*");
+    const { data: predictionsData } = await supabase.from("predictions").select("*");
 
     const { data: teamsData } = await supabase
       .from("teams")
@@ -60,6 +118,118 @@ export default function Home() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) return;
+
+    setNotificationsEnabled(Notification.permission === "granted");
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("prediction-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "predictions",
+        },
+        async (payload) => {
+          await loadData();
+
+          const prediction = payload.new;
+          const player = players.find((p) => p.id === prediction.player_id);
+          const match = matches.find((m) => m.id === prediction.match_id);
+
+          sendLocalNotification(
+            "Nouveau prono validé",
+            `${player?.name || "Un joueur"} a rempli son prono${
+              match ? ` pour ${match.home_team} - ${match.away_team}` : ""
+            }.`
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "predictions",
+        },
+        async (payload) => {
+          await loadData();
+
+          const prediction = payload.new;
+          const player = players.find((p) => p.id === prediction.player_id);
+          const match = matches.find((m) => m.id === prediction.match_id);
+
+          sendLocalNotification(
+            "Prono modifié",
+            `${player?.name || "Un joueur"} a modifié son prono${
+              match ? ` pour ${match.home_team} - ${match.away_team}` : ""
+            }.`
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [players, matches]);
+
+  useEffect(() => {
+    if (!matches.length) return;
+    if (typeof window === "undefined") return;
+
+    const timers = [];
+
+    matches.forEach((match) => {
+      const matchTime = new Date(match.match_date).getTime();
+      const reminderTime = matchTime - 60 * 60 * 1000;
+      const delay = reminderTime - Date.now();
+
+      if (delay > 0) {
+        const timer = window.setTimeout(() => {
+          sendLocalNotification(
+            "Rappel pronos",
+            `Plus qu'1h pour pronostiquer ${match.home_team} - ${match.away_team}.`
+          );
+        }, delay);
+
+        timers.push(timer);
+      }
+    });
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [matches]);
+
+  useEffect(() => {
+    const nextScores = {};
+
+    predictions.forEach((prediction) => {
+      if (prediction.player_id === selectedPlayer) {
+        nextScores[prediction.match_id] = {
+          home: prediction.predicted_home,
+          away: prediction.predicted_away,
+        };
+      }
+    });
+
+    matches.forEach((match) => {
+      nextScores[match.id] = {
+        ...nextScores[match.id],
+        officialHome: match.home_score ?? "",
+        officialAway: match.away_score ?? "",
+      };
+    });
+
+    setScores(nextScores);
+  }, [selectedPlayer, predictions, matches]);
 
   function formatDate(date) {
     return new Date(date).toLocaleString("fr-FR", {
@@ -141,6 +311,13 @@ export default function Home() {
       });
     }
 
+    const player = players.find((p) => p.id === selectedPlayer);
+
+    sendLocalNotification(
+      "Prono validé",
+      `${player?.name || "Joueur"} a validé ${match.home_team} - ${match.away_team}.`
+    );
+
     await loadData();
   }
 
@@ -171,10 +348,7 @@ export default function Home() {
     for (const prediction of relatedPredictions) {
       const points = calculatePredictionPoints(prediction, updatedMatch);
 
-      await supabase
-        .from("predictions")
-        .update({ points })
-        .eq("id", prediction.id);
+      await supabase.from("predictions").update({ points }).eq("id", prediction.id);
     }
 
     await loadData();
@@ -266,7 +440,6 @@ export default function Home() {
   }
 
   function getQualifiedTeams() {
-    const groupNames = [...new Set(teams.map((team) => team.group_name))];
     const qualified = [];
 
     groupNames.forEach((groupName) => {
@@ -306,109 +479,103 @@ export default function Home() {
     return "Vainqueur à définir";
   }
 
-  useEffect(() => {
-    const nextScores = {};
-
-    predictions.forEach((prediction) => {
-      if (prediction.player_id === selectedPlayer) {
-        nextScores[prediction.match_id] = {
-          home: prediction.predicted_home,
-          away: prediction.predicted_away,
-        };
-      }
-    });
-
-    matches.forEach((match) => {
-      nextScores[match.id] = {
-        ...nextScores[match.id],
-        officialHome: match.home_score ?? "",
-        officialAway: match.away_score ?? "",
-      };
-    });
-
-    setScores(nextScores);
-  }, [selectedPlayer, predictions, matches]);
-
-  const groupNames = [...new Set(teams.map((team) => team.group_name))];
-
-  const knockoutMatches = matches
-    .filter((match) => match.stage !== "GROUP")
-    .sort(
-      (a, b) =>
-        new Date(a.match_date) - new Date(b.match_date) ||
-        (a.knockout_order || 0) - (b.knockout_order || 0)
-    );
-
-  const roundLabels = {
-    R32: "16es de finale",
-    R16: "8es de finale",
-    QF: "Quarts de finale",
-    SF: "Demi-finales",
-    FINAL: "Finale",
-  };
-
   return (
-    <main className="min-h-screen bg-[#0f0718] p-6 text-white">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <header className="rounded-3xl border border-white/10 bg-[#211433]/90 p-8">
-          <p className="text-sm font-bold uppercase tracking-widest text-blue-300">
-            Coupe du Monde 2026
-          </p>
+    <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
+      <div className="fixed inset-0 -z-20">
+        <img
+          src="/stadium.jpg"
+          alt="Stade"
+          className="h-full w-full object-cover opacity-45"
+        />
+      </div>
 
-          <h1 className="mt-3 text-4xl font-black">Pronos Famille</h1>
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e55,transparent_32%),linear-gradient(135deg,#0b0513dd,#35145fdd_48%,#064e3bdd)]" />
+      <div className="fixed inset-0 -z-10 bg-black/35 backdrop-blur-[1px]" />
 
-          <p className="mt-2 text-slate-300">
-            Pronostics, scores, groupes et tableau final.
-          </p>
+      <div className="mx-auto max-w-7xl space-y-8 p-6">
+        <header className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-8 shadow-2xl backdrop-blur-md">
+          <div className="flex flex-col items-center text-center">
+            <img
+              src="/logo.png"
+              alt="Logo Pronos Famille"
+              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl md:h-36 md:w-36"
+            />
+
+            <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
+              Coupe du Monde 2026
+            </p>
+
+            <h1 className="mt-3 text-5xl font-black tracking-tight md:text-7xl">
+              Pronos Famille
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-lg text-slate-200">
+              Pronostics, scores, groupes, tableau final et notifications de rappel.
+            </p>
+
+            <button
+              onClick={requestNotifications}
+              className={`mt-6 inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black shadow-xl transition ${
+                notificationsEnabled
+                  ? "bg-emerald-500 text-[#07130c]"
+                  : "bg-violet-600 text-white hover:bg-violet-500"
+              }`}
+            >
+              <Bell className="h-5 w-5" />
+              {notificationsEnabled
+                ? "Notifications activées"
+                : "Activer les notifications"}
+            </button>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-[#211433]/90 p-6">
+          <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <Users className="h-6 w-6 text-blue-300" />
+              <Users className="h-7 w-7 text-emerald-300" />
               <div>
                 <p className="text-sm text-slate-300">Joueurs</p>
-                <p className="text-3xl font-black">{players.length}</p>
+                <p className="text-4xl font-black">{players.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-[#211433]/90 p-6">
+          <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <CalendarDays className="h-6 w-6 text-blue-300" />
+              <CalendarDays className="h-7 w-7 text-emerald-300" />
               <div>
                 <p className="text-sm text-slate-300">Matchs</p>
-                <p className="text-3xl font-black">{matches.length}</p>
+                <p className="text-4xl font-black">{matches.length}</p>
               </div>
             </div>
           </div>
         </section>
 
-        <nav className="flex flex-wrap gap-3 rounded-3xl border border-white/10 bg-[#211433]/90 p-4">
-          {["pronos", "classement", "groupes", "tableau", "admin"].map(
-            (item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  if (item === "admin") {
-                    const password = prompt("Mot de passe admin");
+        <nav className="flex flex-wrap justify-center gap-3 rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-4 shadow-xl backdrop-blur-md">
+          {["pronos", "classement", "groupes", "tableau", "admin"].map((item) => (
+            <button
+              key={item}
+              onClick={() => {
+                if (item === "admin") {
+                  const password = prompt("Mot de passe admin");
 
-                    if (password !== "SVEN2026") {
-                      alert("Accès refusé");
-                      return;
-                    }
+                  if (password !== "SVEN2026") {
+                    alert("Accès refusé");
+                    return;
                   }
+                }
 
-                  setTab(item);
-                }}
-                className={`rounded-2xl px-4 py-3 font-bold capitalize ${
-                  tab === item ? "bg-[#7c3aed]" : ""
-                }`}
-              >
-                {item}
-              </button>
-            )
-          )}
+                setTab(item);
+              }}
+              className={`rounded-2xl px-5 py-3 font-black capitalize transition ${
+                tab === item
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
+                  : "bg-white/5 text-slate-100 hover:bg-emerald-500/20"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
         </nav>
 
         {loading ? (
@@ -419,13 +586,13 @@ export default function Home() {
           <>
             {tab === "pronos" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 p-6">
-                  <h2 className="text-2xl font-bold">Choisir le joueur</h2>
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="text-2xl font-black">Choisir le joueur</h2>
 
                   <select
                     value={selectedPlayer}
                     onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="mt-4 w-full rounded-2xl bg-[#12091f]/70 p-4 text-white"
+                    className="mt-4 w-full rounded-2xl bg-[#12091f]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                   >
                     {players.map((player) => (
                       <option key={player.id} value={player.id}>
@@ -445,20 +612,20 @@ export default function Home() {
                     return (
                       <div
                         key={match.id}
-                        className={`rounded-3xl border p-6 ${
+                        className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
                           finished
-                            ? "border-slate-700 bg-slate-900/60 opacity-70"
-                            : "border-white/10"
+                            ? "border-slate-700 bg-slate-950/70 opacity-80"
+                            : "border-white/15 bg-[#12091f]/75"
                         }`}
                       >
-                        <div className="mb-3 inline-flex rounded-full bg-[#8b5cf6]/20 px-3 py-1 text-sm font-semibold text-blue-200">
+                        <div className="mb-3 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
                           {match.stage === "GROUP"
                             ? `Groupe ${match.group_name}`
                             : roundLabels[match.stage] || match.stage}
                         </div>
 
                         {finished && (
-                          <div className="mb-3 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-bold text-white">
+                          <div className="mb-3 ml-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-black text-white">
                             TERMINÉ
                           </div>
                         )}
@@ -472,7 +639,7 @@ export default function Home() {
                         </p>
 
                         <p
-                          className={`mt-2 font-bold ${
+                          className={`mt-2 font-black ${
                             locked ? "text-red-400" : "text-emerald-400"
                           }`}
                         >
@@ -480,15 +647,15 @@ export default function Home() {
                         </p>
 
                         {prediction && (
-                          <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3">
-                            <p className="font-bold text-emerald-300">
+                          <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3 ring-1 ring-emerald-300/20">
+                            <p className="font-black text-emerald-300">
                               Pronostic : {prediction.predicted_home} -{" "}
                               {prediction.predicted_away}
                             </p>
 
                             {finished && (
                               <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
-                                <p className="text-sm font-bold text-yellow-200">
+                                <p className="text-sm font-black text-yellow-200">
                                   Points gagnés
                                 </p>
 
@@ -500,7 +667,7 @@ export default function Home() {
                           </div>
                         )}
 
-                        <div className="mt-5 flex items-center gap-3">
+                        <div className="mt-5 flex flex-wrap items-center gap-3">
                           <input
                             disabled={locked}
                             type="number"
@@ -515,7 +682,7 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
+                            className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
                           />
 
                           <span className="text-2xl font-black">-</span>
@@ -534,13 +701,13 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
+                            className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
                           />
 
                           <button
                             onClick={() => savePrediction(match)}
                             disabled={locked}
-                            className="rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-40"
+                            className="rounded-2xl bg-violet-600 px-5 py-4 font-black disabled:opacity-40"
                           >
                             Valider
                           </button>
@@ -553,8 +720,8 @@ export default function Home() {
             )}
 
             {tab === "classement" && (
-              <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
-                <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
+              <section className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
+                <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
                   <Trophy className="h-6 w-6 text-yellow-400" />
                   Classement joueurs
                 </h2>
@@ -564,7 +731,7 @@ export default function Home() {
                   .map((player, index) => (
                     <div
                       key={player.id}
-                      className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/60 p-4"
+                      className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                     >
                       <span>
                         {index + 1}. {player.name}
@@ -584,11 +751,9 @@ export default function Home() {
                   return (
                     <div
                       key={groupName}
-                      className="rounded-3xl border border-white/10 p-6"
+                      className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md"
                     >
-                      <h2 className="mb-4 text-2xl font-black">
-                        Groupe {groupName}
-                      </h2>
+                      <h2 className="mb-4 text-2xl font-black">Groupe {groupName}</h2>
 
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -609,10 +774,7 @@ export default function Home() {
 
                           <tbody>
                             {standings.map((team, index) => (
-                              <tr
-                                key={team.name}
-                                className="border-t border-white/10"
-                              >
+                              <tr key={team.name} className="border-t border-white/10">
                                 <td className="p-2 font-bold">{index + 1}</td>
 
                                 <td className="p-2 font-bold">
@@ -624,28 +786,14 @@ export default function Home() {
                                   )}
                                 </td>
 
-                                <td className="p-2 text-center">
-                                  {team.played}
-                                </td>
+                                <td className="p-2 text-center">{team.played}</td>
                                 <td className="p-2 text-center">{team.wins}</td>
-                                <td className="p-2 text-center">
-                                  {team.draws}
-                                </td>
-                                <td className="p-2 text-center">
-                                  {team.losses}
-                                </td>
-                                <td className="p-2 text-center">
-                                  {team.goalsFor}
-                                </td>
-                                <td className="p-2 text-center">
-                                  {team.goalsAgainst}
-                                </td>
-                                <td className="p-2 text-center">
-                                  {team.goalDifference}
-                                </td>
-                                <td className="p-2 text-center font-black">
-                                  {team.points}
-                                </td>
+                                <td className="p-2 text-center">{team.draws}</td>
+                                <td className="p-2 text-center">{team.losses}</td>
+                                <td className="p-2 text-center">{team.goalsFor}</td>
+                                <td className="p-2 text-center">{team.goalsAgainst}</td>
+                                <td className="p-2 text-center">{team.goalDifference}</td>
+                                <td className="p-2 text-center font-black">{team.points}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -659,40 +807,36 @@ export default function Home() {
 
             {tab === "tableau" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 p-6">
-                  <h2 className="text-2xl font-black">
-                    Équipes qualifiées provisoires
-                  </h2>
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="text-2xl font-black">Équipes qualifiées provisoires</h2>
 
                   <p className="mt-2 text-sm text-slate-300">
-                    Pour l’instant, les deux premiers de chaque groupe sont
-                    listés automatiquement. On ajoutera ensuite les meilleurs
-                    troisièmes et l’ordre officiel des 16es.
+                    Pour l’instant, les deux premiers de chaque groupe sont listés automatiquement.
                   </p>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
                     {getQualifiedTeams().map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                       >
-                        <p className="text-sm text-blue-300">{item.label}</p>
+                        <p className="text-sm text-emerald-300">{item.label}</p>
                         <p className="text-xl font-black">{item.team}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 p-6">
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <h2 className="mb-5 text-2xl font-black">Tableau final</h2>
 
                   <div className="grid gap-5 md:grid-cols-2">
                     {knockoutMatches.map((match) => (
                       <div
                         key={match.id}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                       >
-                        <div className="mb-2 inline-flex rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">
+                        <div className="mb-2 inline-flex rounded-full bg-violet-500/20 px-3 py-1 text-sm font-black text-violet-200">
                           {roundLabels[match.stage] || match.stage}
                         </div>
 
@@ -707,8 +851,7 @@ export default function Home() {
                         <p className="mt-3">
                           Score :{" "}
                           <strong>
-                            {match.home_score ?? "-"} -{" "}
-                            {match.away_score ?? "-"}
+                            {match.home_score ?? "-"} - {match.away_score ?? "-"}
                           </strong>
                         </p>
 
@@ -724,8 +867,8 @@ export default function Home() {
 
             {tab === "admin" && (
               <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10 p-6">
-                  <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
                     <Settings className="h-6 w-6" />
                     Ajouter un joueur
                   </h2>
@@ -735,36 +878,34 @@ export default function Home() {
                       value={newPlayer}
                       onChange={(e) => setNewPlayer(e.target.value)}
                       placeholder="Nom du joueur"
-                      className="flex-1 rounded-2xl bg-[#12091f]/70 p-4 text-white"
+                      className="flex-1 rounded-2xl bg-[#12091f]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                     />
 
                     <button
                       onClick={addPlayer}
-                      className="rounded-2xl bg-blue-600 px-5 py-4 font-bold"
+                      className="rounded-2xl bg-violet-600 px-5 py-4 font-black"
                     >
                       Ajouter
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 p-6">
-                  <h2 className="mb-5 text-2xl font-bold">
-                    Résultats officiels
-                  </h2>
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="mb-5 text-2xl font-black">Résultats officiels</h2>
 
                   <div className="space-y-4">
                     {matches.map((match) => (
                       <div
                         key={match.id}
-                        className="rounded-2xl bg-[#12091f]/60 p-4"
+                        className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                       >
-                        <div className="mb-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200">
+                        <div className="mb-2 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
                           {match.stage === "GROUP"
                             ? `Groupe ${match.group_name}`
                             : roundLabels[match.stage] || match.stage}
                         </div>
 
-                        <h3 className="font-bold">
+                        <h3 className="font-black">
                           {match.home_team} - {match.away_team}
                         </h3>
 
@@ -782,7 +923,7 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
+                            className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                           />
 
                           <span>-</span>
@@ -800,12 +941,12 @@ export default function Home() {
                                 },
                               })
                             }
-                            className="w-20 rounded-2xl bg-slate-900 p-3 text-center"
+                            className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                           />
 
                           <button
                             onClick={() => saveOfficialScore(match.id)}
-                            className="rounded-2xl bg-emerald-600 px-4 py-3 font-bold"
+                            className="rounded-2xl bg-emerald-600 px-4 py-3 font-black"
                           >
                             Enregistrer
                           </button>
