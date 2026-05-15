@@ -1,11 +1,19 @@
 {
   "name": "Les Pronos de Papy",
-  "short_name": "Pronos",
+  "short_name": "Pronos Papy",
+  "description": "Application de pronostics Coupe du Monde 2026",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#020617",
-  "theme_color": "#020617",
+  "theme_color": "#16a34a",
   "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
     {
       "src": "/logo.png",
       "sizes": "512x512",
