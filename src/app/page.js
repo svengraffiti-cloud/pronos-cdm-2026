@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 
+
 export default function Home() {
   const [tab, setTab] = useState("pronos");
 
