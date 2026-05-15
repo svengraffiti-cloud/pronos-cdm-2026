@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
+  askNotificationPermission,
+  schedulePronoNotifications,
+} from "../lib/pronoNotifications";
+import {
   Trophy,
   Users,
   CalendarDays,
@@ -103,26 +107,19 @@ export default function Home() {
 
     new Notification(title, {
       body,
-      icon: "/logo.png",
-      badge: "/logo.png",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
     });
   }
 
   async function requestNotifications() {
-    if (typeof window === "undefined") return;
+    const accepted = await askNotificationPermission();
 
-    if (!("Notification" in window)) {
-      alert("Les notifications ne sont pas supportées par ce navigateur.");
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-
-    if (permission === "granted") {
+    if (accepted) {
       setNotificationsEnabled(true);
       sendLocalNotification(
-        "Notifications activées",
-        "Tu recevras les alertes de pronos sur cet appareil."
+        "Notifications activées 🔔",
+        "Tu recevras les rappels de pronos selon les horaires des matchs."
       );
     } else {
       setNotificationsEnabled(false);
@@ -256,49 +253,16 @@ export default function Home() {
     if (!session?.user?.id) return;
 
     const channel = supabase
-      .channel("prediction-notifications")
+      .channel("prediction-refresh")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "predictions",
         },
-        async (payload) => {
+        async () => {
           await loadData();
-
-          const prediction = payload.new;
-          const player = players.find((p) => p.id === prediction.player_id);
-          const match = matches.find((m) => m.id === prediction.match_id);
-
-          sendLocalNotification(
-            "Nouveau prono validé",
-            `${player?.name || "Un joueur"} a rempli son prono${
-              match ? ` pour ${match.home_team} - ${match.away_team}` : ""
-            }.`
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "predictions",
-        },
-        async (payload) => {
-          await loadData();
-
-          const prediction = payload.new;
-          const player = players.find((p) => p.id === prediction.player_id);
-          const match = matches.find((m) => m.id === prediction.match_id);
-
-          sendLocalNotification(
-            "Prono modifié",
-            `${player?.name || "Un joueur"} a modifié son prono${
-              match ? ` pour ${match.home_team} - ${match.away_team}` : ""
-            }.`
-          );
         }
       )
       .subscribe();
@@ -306,35 +270,37 @@ export default function Home() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, players, matches]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
+    if (!notificationsEnabled) return;
+    if (!session?.user?.id) return;
+    if (!currentPlayerId) return;
     if (!matches.length) return;
-    if (typeof window === "undefined") return;
 
-    const timers = [];
+    const normalizedMatches = matches.map((match) => ({
+      id: match.id,
+      kickoff: match.match_date,
+    }));
 
-    matches.forEach((match) => {
-      const matchTime = new Date(match.match_date).getTime();
-      const reminderTime = matchTime - 60 * 60 * 1000;
-      const delay = reminderTime - Date.now();
+    const myPredictions = predictions
+      .filter((prediction) => prediction.player_id === currentPlayerId)
+      .map((prediction) => ({
+        matchId: prediction.match_id,
+      }));
 
-      if (delay > 0) {
-        const timer = window.setTimeout(() => {
-          sendLocalNotification(
-            "Rappel pronos",
-            `Plus qu'1h pour pronostiquer ${match.home_team} - ${match.away_team}.`
-          );
-        }, delay);
-
-        timers.push(timer);
-      }
+    schedulePronoNotifications({
+      userId: session.user.id,
+      matches: normalizedMatches,
+      predictions: myPredictions,
     });
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [matches]);
+  }, [
+    notificationsEnabled,
+    session?.user?.id,
+    currentPlayerId,
+    matches,
+    predictions,
+  ]);
 
   useEffect(() => {
     const nextScores = {};
@@ -406,7 +372,11 @@ export default function Home() {
 
           if (profileError) throw profileError;
 
-          setProfile(playerData ? { id: data.user.id, player_id: playerData.id, role: "player" } : null);
+          setProfile(
+            playerData
+              ? { id: data.user.id, player_id: playerData.id, role: "player" }
+              : null
+          );
           setCurrentPlayer(playerData);
           await refreshEverything(data.user.id);
         }
