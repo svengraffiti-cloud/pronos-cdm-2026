@@ -591,10 +591,19 @@ className={`rounded-3xl border p-6 ${
                               Pronostic : {prediction.predicted_home} -{" "}
                               {prediction.predicted_away}
                             </p>
-                            <p className="mt-1 text-sm">
-                              Points : {prediction.points || 0}
-                            </p>
-                          </div>
+                            {finished && (
+  <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
+    <p className="text-sm font-bold text-yellow-200">
+      Points gagnés
+    </p>
+
+    <p className="text-4xl font-black text-yellow-300">
+      +{prediction.points || 0}
+    </p>
+  </div>
+)}
+                          
+                        
                         )}
 
                         <div className="mt-5 flex items-center gap-3">
