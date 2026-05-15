@@ -172,37 +172,39 @@ export default function Home() {
   async function loadData() {
     setLoading(true);
 
-    const { data: playersData } = await supabase
-      .from("players")
-      .select("*")
-      .order("created_at", { ascending: true });
+    try {
+      const [playersResult, matchesResult, predictionsResult, teamsResult] =
+        await Promise.all([
+          supabase
+            .from("players")
+            .select("*")
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("matches")
+            .select("*")
+            .order("match_date", { ascending: true }),
+          supabase
+            .from("predictions")
+            .select("*, players:player_id(id, name, avatar_url)"),
+          supabase
+            .from("teams")
+            .select("*")
+            .order("group_name", { ascending: true }),
+        ]);
 
-    const { data: matchesData } = await supabase
-      .from("matches")
-      .select("*")
-      .order("match_date", { ascending: true });
-
-    const { data: predictionsData } = await supabase
-      .from("predictions")
-      .select("*, players:player_id(id, name, avatar_url)");
-
-    const { data: teamsData } = await supabase
-      .from("teams")
-      .select("*")
-      .order("group_name", { ascending: true });
-
-    setPlayers(playersData || []);
-    setMatches(matchesData || []);
-    setPredictions(predictionsData || []);
-    setTeams(teamsData || []);
-
-    setLoading(false);
+      setPlayers(playersResult.data || []);
+      setMatches(matchesResult.data || []);
+      setPredictions(predictionsResult.data || []);
+      setTeams(teamsResult.data || []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function refreshEverything(userId = session?.user?.id) {
     if (!userId) return;
-    await loadProfile(userId);
-    await loadData();
+
+    await Promise.all([loadProfile(userId), loadData()]);
   }
 
   useEffect(() => {
