@@ -660,12 +660,13 @@ className={`rounded-3xl border p-6 ${
                           >
                             Valider
                          </button>
-</div>
-</div>
-
+      </button>
+    </div>
+  </div>
 )}
-</div>
+
 </section>
+
 
 {tab === "classement" && (
               <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
