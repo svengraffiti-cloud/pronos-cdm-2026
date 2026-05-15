@@ -916,7 +916,6 @@ const isMatchLocked = (matchDate) => {
                           </button>
                         </div>
                       </div>
-                                   </div>
               </div>
             ))}
           </div>
