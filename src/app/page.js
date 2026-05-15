@@ -657,14 +657,12 @@ className={`rounded-3xl border p-6 ${
                             onClick={() => savePrediction(match)}
                             disabled={locked}
                             className="rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-40"
-           >
+      >
   Valider
 </button>
-
 </div>
 </div>
 )}
-
 </section>
 
 {tab === "classement" && (
@@ -688,6 +686,8 @@ className={`rounded-3xl border p-6 ${
           <strong>{playerTotal(player.id)} pts</strong>
         </div>
       ))}
+  </section>
+)}
   </section>
 )}
               </section>
