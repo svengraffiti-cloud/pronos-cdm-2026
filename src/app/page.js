@@ -916,12 +916,13 @@ const isMatchLocked = (matchDate) => {
                           </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-                   )}
-      </div>
-    </main>
-  );
+                                   </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </main>
+);
 }
