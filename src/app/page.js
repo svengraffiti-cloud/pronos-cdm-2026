@@ -614,7 +614,7 @@ className={`rounded-3xl border p-6 ${
 )}
                           
                         
-                        )}
+                        
 
                         <div className="mt-5 flex items-center gap-3">
                           <input
