@@ -3,10 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
-  askNotificationPermission,
-  schedulePronoNotifications,
-} from "../lib/pronoNotifications";
-import {
   Trophy,
   Users,
   CalendarDays,
@@ -101,22 +97,12 @@ export default function Home() {
   };
 
   function sendLocalNotification(title, body) {
-  // SÉCURITÉ ABSOLUE ANTI-SPAM
-  // Toutes les notifications sont désactivées temporairement.
-  return;
-}
+    return;
+  }
 
-async function requestNotifications() {
-  // Notifications désactivées temporairement
-  // pour stopper définitivement les rafales.
-
-  setNotificationsEnabled(false);
-
-  alert(
-    "Les notifications sont temporairement désactivées pour maintenance."
-  );
-}
-    }
+  async function requestNotifications() {
+    setNotificationsEnabled(false);
+    alert("Les notifications sont temporairement désactivées pour maintenance.");
   }
 
   async function uploadAvatar(file, userId) {
@@ -235,10 +221,7 @@ async function requestNotifications() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
-
-    setNotificationsEnabled(Notification.permission === "granted");
+    setNotificationsEnabled(false);
   }, []);
 
   useEffect(() => {
@@ -263,36 +246,6 @@ async function requestNotifications() {
       supabase.removeChannel(channel);
     };
   }, [session?.user?.id]);
-
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-    if (!session?.user?.id) return;
-    if (!currentPlayerId) return;
-    if (!matches.length) return;
-
-    const normalizedMatches = matches.map((match) => ({
-      id: match.id,
-      kickoff: match.match_date,
-    }));
-
-    const myPredictions = predictions
-      .filter((prediction) => prediction.player_id === currentPlayerId)
-      .map((prediction) => ({
-        matchId: prediction.match_id,
-      }));
-
-    schedulePronoNotifications({
-      userId: session.user.id,
-      matches: normalizedMatches,
-      predictions: myPredictions,
-    });
-  }, [
-    notificationsEnabled,
-    session?.user?.id,
-    currentPlayerId,
-    matches,
-    predictions,
-  ]);
 
   useEffect(() => {
     const nextScores = {};
@@ -364,11 +317,11 @@ async function requestNotifications() {
 
           if (profileError) throw profileError;
 
-          setProfile(
-            playerData
-              ? { id: data.user.id, player_id: playerData.id, role: "player" }
-              : null
-          );
+          setProfile({
+            id: data.user.id,
+            player_id: playerData.id,
+            role: "player",
+          });
           setCurrentPlayer(playerData);
           await refreshEverything(data.user.id);
         }
@@ -515,11 +468,6 @@ async function requestNotifications() {
         predicted_away: Number(away),
       });
     }
-
-    sendLocalNotification(
-      "Prono validé",
-      `${currentPlayer?.name || "Joueur"} a validé ${match.home_team} - ${match.away_team}.`
-    );
 
     await loadData();
   }
@@ -929,14 +877,10 @@ async function requestNotifications() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <button
                 onClick={requestNotifications}
-                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black shadow-xl transition ${
-                  notificationsEnabled
-                    ? "bg-emerald-500 text-[#07130c]"
-                    : "bg-violet-600 text-white hover:bg-violet-500"
-                }`}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-black text-white ring-1 ring-white/10"
               >
                 <Bell className="h-5 w-5" />
-                {notificationsEnabled ? "Notifications activées" : "Activer les notifications"}
+                Notifications désactivées
               </button>
 
               <button
