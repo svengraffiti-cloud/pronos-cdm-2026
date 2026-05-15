@@ -2,15 +2,40 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { Trophy, Users, CalendarDays, Settings, Loader2, Bell } from "lucide-react";
+import {
+  Trophy,
+  Users,
+  CalendarDays,
+  Settings,
+  Loader2,
+  Bell,
+  LogOut,
+  Camera,
+  UserCircle,
+  Lock,
+} from "lucide-react";
 
 export default function Home() {
+  const [session, setSession] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authAvatarFile, setAuthAvatarFile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+
+  const [profile, setProfile] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileAvatarFile, setProfileAvatarFile] = useState(null);
+  const [creatingProfile, setCreatingProfile] = useState(false);
+
   const [tab, setTab] = useState("pronos");
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [selectedPlayer, setSelectedPlayer] = useState("");
   const [newPlayer, setNewPlayer] = useState("");
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState({});
@@ -23,6 +48,9 @@ export default function Home() {
     SF: "Demi-finales",
     FINAL: "Finale",
   };
+
+  const isAdmin = profile?.role === "admin";
+  const currentPlayerId = profile?.player_id;
 
   const groupNames = useMemo(
     () => [...new Set(teams.map((team) => team.group_name))],
@@ -83,6 +111,45 @@ export default function Home() {
     }
   }
 
+  async function uploadAvatar(file, userId) {
+    if (!file) return null;
+
+    const extension = file.name.split(".").pop() || "jpg";
+    const path = `${userId}/${Date.now()}.${extension}`;
+
+    const { error } = await supabase.storage.from("avatars").upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+    if (error) throw error;
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async function loadProfile(userId) {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    setProfile(profileData || null);
+
+    if (profileData?.player_id) {
+      const { data: playerData } = await supabase
+        .from("players")
+        .select("*")
+        .eq("id", profileData.player_id)
+        .maybeSingle();
+
+      setCurrentPlayer(playerData || null);
+    } else {
+      setCurrentPlayer(null);
+    }
+  }
+
   async function loadData() {
     setLoading(true);
 
@@ -96,7 +163,9 @@ export default function Home() {
       .select("*")
       .order("match_date", { ascending: true });
 
-    const { data: predictionsData } = await supabase.from("predictions").select("*");
+    const { data: predictionsData } = await supabase
+      .from("predictions")
+      .select("*, players:player_id(id, name, avatar_url)");
 
     const { data: teamsData } = await supabase
       .from("teams")
@@ -108,15 +177,51 @@ export default function Home() {
     setPredictions(predictionsData || []);
     setTeams(teamsData || []);
 
-    if (!selectedPlayer && playersData?.length > 0) {
-      setSelectedPlayer(playersData[0].id);
-    }
-
     setLoading(false);
   }
 
+  async function refreshEverything(userId = session?.user?.id) {
+    if (!userId) return;
+    await loadProfile(userId);
+    await loadData();
+  }
+
   useEffect(() => {
-    loadData();
+    async function initAuth() {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session || null);
+
+      if (data.session?.user?.id) {
+        await refreshEverything(data.session.user.id);
+      }
+
+      setAuthLoading(false);
+    }
+
+    initAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, nextSession) => {
+        setSession(nextSession || null);
+
+        if (nextSession?.user?.id) {
+          await refreshEverything(nextSession.user.id);
+        } else {
+          setProfile(null);
+          setCurrentPlayer(null);
+          setPlayers([]);
+          setMatches([]);
+          setPredictions([]);
+          setTeams([]);
+        }
+
+        setAuthLoading(false);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -127,6 +232,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
+
     const channel = supabase
       .channel("prediction-notifications")
       .on(
@@ -178,7 +285,7 @@ export default function Home() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [players, matches]);
+  }, [session?.user?.id, players, matches]);
 
   useEffect(() => {
     if (!matches.length) return;
@@ -212,7 +319,7 @@ export default function Home() {
     const nextScores = {};
 
     predictions.forEach((prediction) => {
-      if (prediction.player_id === selectedPlayer) {
+      if (prediction.player_id === currentPlayerId) {
         nextScores[prediction.match_id] = {
           home: prediction.predicted_home,
           away: prediction.predicted_away,
@@ -229,7 +336,111 @@ export default function Home() {
     });
 
     setScores(nextScores);
-  }, [selectedPlayer, predictions, matches]);
+  }, [currentPlayerId, predictions, matches]);
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+
+    try {
+      if (authMode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          let avatarUrl = null;
+
+          if (authAvatarFile) {
+            avatarUrl = await uploadAvatar(authAvatarFile, data.user.id);
+          }
+
+          const { data: playerData, error: playerError } = await supabase
+            .from("players")
+            .insert({
+              name: authName.trim() || authEmail.split("@")[0],
+              avatar_url: avatarUrl,
+            })
+            .select("*")
+            .single();
+
+          if (playerError) throw playerError;
+
+          const { error: profileError } = await supabase.from("profiles").insert({
+            id: data.user.id,
+            player_id: playerData.id,
+            role: "player",
+          });
+
+          if (profileError) throw profileError;
+
+          setProfile(playerData ? { id: data.user.id, player_id: playerData.id, role: "player" } : null);
+          setCurrentPlayer(playerData);
+          await refreshEverything(data.user.id);
+        }
+      }
+    } catch (error) {
+      setAuthError(error.message || "Erreur de connexion.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function createMissingProfile(e) {
+    e.preventDefault();
+    if (!session?.user?.id) return;
+
+    setCreatingProfile(true);
+    setAuthError("");
+
+    try {
+      let avatarUrl = null;
+
+      if (profileAvatarFile) {
+        avatarUrl = await uploadAvatar(profileAvatarFile, session.user.id);
+      }
+
+      const { data: playerData, error: playerError } = await supabase
+        .from("players")
+        .insert({
+          name: profileName.trim() || session.user.email?.split("@")[0] || "Joueur",
+          avatar_url: avatarUrl,
+        })
+        .select("*")
+        .single();
+
+      if (playerError) throw playerError;
+
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: session.user.id,
+        player_id: playerData.id,
+        role: "player",
+      });
+
+      if (profileError) throw profileError;
+
+      await refreshEverything(session.user.id);
+    } catch (error) {
+      setAuthError(error.message || "Erreur de création du profil.");
+    } finally {
+      setCreatingProfile(false);
+    }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
 
   function formatDate(date) {
     return new Date(date).toLocaleString("fr-FR", {
@@ -240,8 +451,16 @@ export default function Home() {
 
   function getPrediction(matchId) {
     return predictions.find(
-      (p) => p.player_id === selectedPlayer && p.match_id === matchId
+      (p) => p.player_id === currentPlayerId && p.match_id === matchId
     );
+  }
+
+  function getMatchPredictions(matchId) {
+    return predictions
+      .filter((prediction) => prediction.match_id === matchId)
+      .sort((a, b) =>
+        (a.players?.name || "").localeCompare(b.players?.name || "")
+      );
   }
 
   function calculatePredictionPoints(prediction, match) {
@@ -277,7 +496,10 @@ export default function Home() {
   }
 
   async function savePrediction(match) {
-    if (!selectedPlayer) return;
+    if (!currentPlayerId) {
+      alert("Profil joueur introuvable.");
+      return;
+    }
 
     if (isMatchLocked(match.match_date)) {
       alert("Paris verrouillés.");
@@ -304,24 +526,27 @@ export default function Home() {
         .eq("id", existing.id);
     } else {
       await supabase.from("predictions").insert({
-        player_id: selectedPlayer,
+        player_id: currentPlayerId,
         match_id: match.id,
         predicted_home: Number(home),
         predicted_away: Number(away),
       });
     }
 
-    const player = players.find((p) => p.id === selectedPlayer);
-
     sendLocalNotification(
       "Prono validé",
-      `${player?.name || "Joueur"} a validé ${match.home_team} - ${match.away_team}.`
+      `${currentPlayer?.name || "Joueur"} a validé ${match.home_team} - ${match.away_team}.`
     );
 
     await loadData();
   }
 
   async function saveOfficialScore(matchId) {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
     const match = matches.find((m) => m.id === matchId);
     const home = scores[matchId]?.officialHome;
     const away = scores[matchId]?.officialAway;
@@ -355,6 +580,7 @@ export default function Home() {
   }
 
   async function addPlayer() {
+    if (!isAdmin) return;
     if (!newPlayer.trim()) return;
 
     await supabase.from("players").insert({
@@ -479,19 +705,216 @@ export default function Home() {
     return "Vainqueur à définir";
   }
 
+  function Shell({ children }) {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
+        <div className="fixed inset-0 -z-20">
+          <img
+            src="/stadium.jpg"
+            alt="Stade"
+            className="h-full w-full object-cover opacity-70"
+          />
+        </div>
+
+        <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e88,transparent_34%),radial-gradient(circle_at_bottom_right,#7c3aed88,transparent_36%),linear-gradient(135deg,#020617cc,#1e0b38d9_45%,#064e3bcc)]" />
+        <div className="fixed inset-0 -z-10 bg-black/25 backdrop-blur-[1px]" />
+
+        {children}
+      </main>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <Shell>
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+          <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+            />
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
+            <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
+              Chargement
+            </p>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <Shell>
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+          <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
+            <div className="text-center">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+              />
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
+                Coupe du Monde 2026
+              </p>
+              <h1 className="mt-3 text-4xl font-black">Pronos Famille</h1>
+              <p className="mt-2 text-slate-300">
+                Connecte-toi pour accéder uniquement à ta feuille de pronostic.
+              </p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-white/5 p-2">
+              <button
+                onClick={() => setAuthMode("login")}
+                className={`rounded-xl py-3 font-black ${
+                  authMode === "login" ? "bg-violet-600" : "text-slate-300"
+                }`}
+              >
+                Connexion
+              </button>
+              <button
+                onClick={() => setAuthMode("signup")}
+                className={`rounded-xl py-3 font-black ${
+                  authMode === "signup" ? "bg-violet-600" : "text-slate-300"
+                }`}
+              >
+                Créer un compte
+              </button>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="mt-6 space-y-4">
+              {authMode === "signup" && (
+                <>
+                  <input
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Ton prénom / pseudo"
+                    className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                  />
+
+                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                    <Camera className="h-5 w-5 text-emerald-300" />
+                    <span className="flex-1 text-sm text-slate-200">
+                      {authAvatarFile ? authAvatarFile.name : "Ajouter une photo de profil"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setAuthAvatarFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                </>
+              )}
+
+              <input
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                type="email"
+                placeholder="Email"
+                required
+                className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+              />
+
+              <input
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                type="password"
+                placeholder="Mot de passe"
+                required
+                minLength={6}
+                className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+              />
+
+              {authError && (
+                <p className="rounded-2xl bg-red-500/20 p-3 text-sm font-bold text-red-200">
+                  {authError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full rounded-2xl bg-violet-600 px-5 py-4 font-black shadow-xl disabled:opacity-50"
+              >
+                {authLoading
+                  ? "Chargement..."
+                  : authMode === "login"
+                  ? "Se connecter"
+                  : "Créer mon compte"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!profile || !currentPlayer) {
+    return (
+      <Shell>
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+          <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
+            <div className="text-center">
+              <UserCircle className="mx-auto h-20 w-20 text-emerald-300" />
+              <h1 className="mt-4 text-3xl font-black">Créer ton profil joueur</h1>
+              <p className="mt-2 text-slate-300">
+                Ce profil sera lié à ton compte. Tu n’auras accès qu’à tes pronos.
+              </p>
+            </div>
+
+            <form onSubmit={createMissingProfile} className="mt-6 space-y-4">
+              <input
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Ton prénom / pseudo"
+                required
+                className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+              />
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                <Camera className="h-5 w-5 text-emerald-300" />
+                <span className="flex-1 text-sm text-slate-200">
+                  {profileAvatarFile ? profileAvatarFile.name : "Ajouter une photo de profil"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setProfileAvatarFile(e.target.files?.[0] || null)}
+                />
+              </label>
+
+              {authError && (
+                <p className="rounded-2xl bg-red-500/20 p-3 text-sm font-bold text-red-200">
+                  {authError}
+                </p>
+              )}
+
+              <button
+                disabled={creatingProfile}
+                className="w-full rounded-2xl bg-violet-600 px-5 py-4 font-black shadow-xl disabled:opacity-50"
+              >
+                {creatingProfile ? "Création..." : "Entrer dans l'app"}
+              </button>
+
+              <button
+                type="button"
+                onClick={signOut}
+                className="w-full rounded-2xl bg-white/10 px-5 py-4 font-black"
+              >
+                Déconnexion
+              </button>
+            </form>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
-      <div className="fixed inset-0 -z-20">
-        <img
-          src="/stadium.jpg"
-          alt="Stade"
-          className="h-full w-full object-cover opacity-70"
-        />
-      </div>
-
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,#22c55e88,transparent_34%),radial-gradient(circle_at_bottom_right,#7c3aed88,transparent_36%),linear-gradient(135deg,#020617cc,#1e0b38d9_45%,#064e3bcc)]" />
-      <div className="fixed inset-0 -z-10 bg-black/25 backdrop-blur-[1px]" />
-
+    <Shell>
       <div className="mx-auto max-w-7xl space-y-8 p-6">
         <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
@@ -503,6 +926,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
           </div>
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
+
           <div className="flex flex-col items-center text-center">
             <img
               src="/logo.png"
@@ -518,23 +942,47 @@ export default function Home() {
               Pronos Famille
             </h1>
 
+            <div className="mt-5 flex items-center gap-3 rounded-2xl bg-black/25 px-4 py-3 ring-1 ring-white/10">
+              {currentPlayer?.avatar_url ? (
+                <img
+                  src={currentPlayer.avatar_url}
+                  alt={currentPlayer.name}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <UserCircle className="h-10 w-10 text-emerald-300" />
+              )}
+              <div className="text-left">
+                <p className="text-xs text-slate-300">Connecté en tant que</p>
+                <p className="font-black">{currentPlayer?.name}</p>
+              </div>
+            </div>
+
             <p className="mt-3 max-w-2xl text-lg text-slate-200">
-              Pronostics, scores, groupes, tableau final et notifications de rappel.
+              Ton espace pronos sécurisé. Les pronos des autres apparaissent uniquement après fermeture des paris.
             </p>
 
-            <button
-              onClick={requestNotifications}
-              className={`mt-6 inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black shadow-xl transition ${
-                notificationsEnabled
-                  ? "bg-emerald-500 text-[#07130c]"
-                  : "bg-violet-600 text-white hover:bg-violet-500"
-              }`}
-            >
-              <Bell className="h-5 w-5" />
-              {notificationsEnabled
-                ? "Notifications activées"
-                : "Activer les notifications"}
-            </button>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={requestNotifications}
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black shadow-xl transition ${
+                  notificationsEnabled
+                    ? "bg-emerald-500 text-[#07130c]"
+                    : "bg-violet-600 text-white hover:bg-violet-500"
+                }`}
+              >
+                <Bell className="h-5 w-5" />
+                {notificationsEnabled ? "Notifications activées" : "Activer les notifications"}
+              </button>
+
+              <button
+                onClick={signOut}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-black text-white ring-1 ring-white/10"
+              >
+                <LogOut className="h-5 w-5" />
+                Déconnexion
+              </button>
+            </div>
           </div>
         </header>
 
@@ -561,21 +1009,10 @@ export default function Home() {
         </section>
 
         <nav className="flex flex-wrap justify-center gap-3 rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-4 shadow-xl backdrop-blur-md">
-          {["pronos", "classement", "groupes", "tableau", "admin"].map((item) => (
+          {["pronos", "classement", "groupes", "tableau", ...(isAdmin ? ["admin"] : [])].map((item) => (
             <button
               key={item}
-              onClick={() => {
-                if (item === "admin") {
-                  const password = prompt("Mot de passe admin");
-
-                  if (password !== "SVEN2026") {
-                    alert("Accès refusé");
-                    return;
-                  }
-                }
-
-                setTab(item);
-              }}
+              onClick={() => setTab(item)}
               className={`rounded-2xl px-5 py-3 font-black capitalize transition ${
                 tab === item
                   ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
@@ -607,19 +1044,15 @@ export default function Home() {
             {tab === "pronos" && (
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="text-2xl font-black">Choisir le joueur</h2>
-
-                  <select
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="mt-4 w-full rounded-2xl bg-[#12091f]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                  >
-                    {players.map((player) => (
-                      <option key={player.id} value={player.id}>
-                        {player.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-6 w-6 text-emerald-300" />
+                    <div>
+                      <h2 className="text-2xl font-black">Ta feuille de pronostic</h2>
+                      <p className="text-sm text-slate-300">
+                        Tu ne peux remplir que tes propres pronos.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
@@ -627,6 +1060,7 @@ export default function Home() {
                     const locked = isMatchLocked(match.match_date);
                     const finished = isMatchFinished(match);
                     const prediction = getPrediction(match.id);
+                    const matchPredictions = getMatchPredictions(match.id);
                     const localScore = scores[match.id] || {};
 
                     return (
@@ -634,7 +1068,7 @@ export default function Home() {
                         key={match.id}
                         className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
                           finished
-                            ? "border-slate-700 bg-slate-950/70 opacity-80"
+                            ? "border-slate-700 bg-slate-950/70 opacity-90"
                             : "border-white/15 bg-[#12091f]/75"
                         }`}
                       >
@@ -669,15 +1103,12 @@ export default function Home() {
                         {prediction && (
                           <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3 ring-1 ring-emerald-300/20">
                             <p className="font-black text-emerald-300">
-                              Pronostic : {prediction.predicted_home} -{" "}
-                              {prediction.predicted_away}
+                              Ton pronostic : {prediction.predicted_home} - {prediction.predicted_away}
                             </p>
 
                             {finished && (
                               <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
-                                <p className="text-sm font-black text-yellow-200">
-                                  Points gagnés
-                                </p>
+                                <p className="text-sm font-black text-yellow-200">Points gagnés</p>
 
                                 <p className="text-4xl font-black text-yellow-300">
                                   +{prediction.points || 0}
@@ -732,6 +1163,55 @@ export default function Home() {
                             Valider
                           </button>
                         </div>
+
+                        {locked && (
+                          <div className="mt-5 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
+                            <h4 className="mb-3 font-black text-emerald-300">
+                              Pronos des participants
+                            </h4>
+
+                            {matchPredictions.length === 0 ? (
+                              <p className="text-sm text-slate-400">Aucun prono visible.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {matchPredictions.map((item) => {
+                                  const isMe = item.player_id === currentPlayerId;
+
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        {item.players?.avatar_url ? (
+                                          <img
+                                            src={item.players.avatar_url}
+                                            alt={item.players?.name || "Joueur"}
+                                            className="h-8 w-8 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <UserCircle className="h-8 w-8 text-slate-300" />
+                                        )}
+                                        <span className="font-bold">
+                                          {item.players?.name || "Joueur"}
+                                          {isMe && (
+                                            <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
+                                              toi
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+
+                                      <strong>
+                                        {item.predicted_home} - {item.predicted_away}
+                                      </strong>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -753,9 +1233,20 @@ export default function Home() {
                       key={player.id}
                       className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                     >
-                      <span>
-                        {index + 1}. {player.name}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {player.avatar_url ? (
+                          <img
+                            src={player.avatar_url}
+                            alt={player.name}
+                            className="h-9 w-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="h-9 w-9 text-slate-300" />
+                        )}
+                        <span>
+                          {index + 1}. {player.name}
+                        </span>
+                      </div>
 
                       <strong>{playerTotal(player.id)} pts</strong>
                     </div>
@@ -796,7 +1287,6 @@ export default function Home() {
                             {standings.map((team, index) => (
                               <tr key={team.name} className="border-t border-white/10">
                                 <td className="p-2 font-bold">{index + 1}</td>
-
                                 <td className="p-2 font-bold">
                                   {team.name}
                                   {index < 2 && (
@@ -805,7 +1295,6 @@ export default function Home() {
                                     </span>
                                   )}
                                 </td>
-
                                 <td className="p-2 text-center">{team.played}</td>
                                 <td className="p-2 text-center">{team.wins}</td>
                                 <td className="p-2 text-center">{team.draws}</td>
@@ -885,12 +1374,12 @@ export default function Home() {
               </section>
             )}
 
-            {tab === "admin" && (
+            {tab === "admin" && isAdmin && (
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
                     <Settings className="h-6 w-6" />
-                    Ajouter un joueur
+                    Ajouter un joueur manuel
                   </h2>
 
                   <div className="flex gap-3">
@@ -980,6 +1469,6 @@ export default function Home() {
           </>
         )}
       </div>
-    </main>
+    </Shell>
   );
 }
