@@ -527,144 +527,140 @@ const isMatchLocked = (matchDate) => {
               }`}
             >
               {item}
-            </button>
-          ))}
-        </nav>
+           {tab === "pronos" && (
+  <section className="space-y-6">
+    <div className="rounded-3xl border border-white/10 p-6">
+      <h2 className="text-2xl font-bold">Choisir le joueur</h2>
 
-        {loading ? (
-          <div className="rounded-3xl  p-6">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <>
-            {tab === "pronos" && (
-              <section className="space-y-6">
-                <div className="rounded-3xl border border-white/10  p-6">
-                  <h2 className="text-2xl font-bold">Choisir le joueur</h2>
-
-                  <select
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="mt-4 w-full rounded-2xl bg-[#12091f]/70 p-4 text-white"
-                  >
-                    {players.map((player) => (
-                      <option key={player.id} value={player.id}>
-                        {player.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  {matches.map((match) => {
-const locked = isMatchLocked(match.match_date);
-                    const finished = isMatchFinished(match);
-                    const prediction = getPrediction(match.id);
-                    const localScore = scores[match.id] || {};
-                    return (
-                      <div
-                        key={match.id}
-className={`rounded-3xl border p-6 ${
-  finished
-    ? "border-slate-700 bg-slate-900/60 opacity-70"
-    : "border-white/10"
-}`}                      >
-                        <div className="mb-3 inline-flex rounded-full bg-bluebg-[#8b5cf6]500/20 px-3 py-1 text-sm font-semibold text-blue-200">
-                          {match.stage === "GROUP"
-                            ? `Groupe ${match.group_name}`
-                            : roundLabels[match.stage] || match.stage}
-                        </div>
-{finished && (
-  <div className="mb-3 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-bold text-white">
-    TERMINÉ
-  </div>
-)}
-                        <h3 className="text-2xl font-black">
-                          {match.home_team} - {match.away_team}
-                        </h3>
-
-                        <p className="mt-2 text-sm text-slate-300">
-                          {formatDate(match.match_date)}
-                        </p>
-
-                        <p
-                          className={`mt-2 font-bold ${
-                            locked ? "text-red-400" : "text-emerald-400"
-                          }`}
-                        >
-                          {locked ? "🔒 Paris verrouillés" : "🟢 Paris ouverts"}
-                        </p>
-
-                        {prediction && (
-                          <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3">
-                            <p className="font-bold text-emerald-300">
-                              Pronostic : {prediction.predicted_home} -{" "}
-                              {prediction.predicted_away}
-                            </p>
-                            {finished && (
-  <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
-    <p className="text-sm font-bold text-yellow-200">
-      Points gagnés
-    </p>
-
-    <p className="text-4xl font-black text-yellow-300">
-      +{prediction.points || 0}
-    </p>
-  </div>
-)}
-                          
-                        
-                        
-
-                        <div className="mt-5 flex items-center gap-3">
-                          <input
-                            disabled={locked}
-                            type="number"
-                            min="0"
-                            value={localScore.home ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  home: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
-                          />
-
-                          <span className="text-2xl font-black">-</span>
-
-                          <input
-                            disabled={locked}
-                            type="number"
-                            min="0"
-                            value={localScore.away ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  away: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
-                          />
-
-                          <button
-                            onClick={() => savePrediction(match)}
-                            disabled={locked}
-                            className="rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-40"
+      <select
+        value={selectedPlayer}
+        onChange={(e) => setSelectedPlayer(e.target.value)}
+        className="mt-4 w-full rounded-2xl bg-[#12091f]/70 p-4 text-white"
       >
-  Valider
-</button>
-</div>
-</div>
-</div>
-))}
-</section>
+        {players.map((player) => (
+          <option key={player.id} value={player.id}>
+            {player.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div className="grid gap-5 md:grid-cols-2">
+      {matches.map((match) => {
+        const locked = isMatchLocked(match.match_date);
+        const finished = isMatchFinished(match);
+        const prediction = getPrediction(match.id);
+        const localScore = scores[match.id] || {};
+
+        return (
+          <div
+            key={match.id}
+            className={`rounded-3xl border p-6 ${
+              finished
+                ? "border-slate-700 bg-slate-900/60 opacity-70"
+                : "border-white/10"
+            }`}
+          >
+            <div className="mb-3 inline-flex rounded-full bg-[#8b5cf6]/20 px-3 py-1 text-sm font-semibold text-blue-200">
+              {match.stage === "GROUP"
+                ? `Groupe ${match.group_name}`
+                : roundLabels[match.stage] || match.stage}
+            </div>
+
+            {finished && (
+              <div className="mb-3 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-bold text-white">
+                TERMINÉ
+              </div>
+            )}
+
+            <h3 className="text-2xl font-black">
+              {match.home_team} - {match.away_team}
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-300">
+              {formatDate(match.match_date)}
+            </p>
+
+            <p
+              className={`mt-2 font-bold ${
+                locked ? "text-red-400" : "text-emerald-400"
+              }`}
+            >
+              {locked ? "🔒 Paris verrouillés" : "🟢 Paris ouverts"}
+            </p>
+
+            {prediction && (
+              <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3">
+                <p className="font-bold text-emerald-300">
+                  Pronostic : {prediction.predicted_home} -{" "}
+                  {prediction.predicted_away}
+                </p>
+
+                {finished && (
+                  <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
+                    <p className="text-sm font-bold text-yellow-200">
+                      Points gagnés
+                    </p>
+
+                    <p className="text-4xl font-black text-yellow-300">
+                      +{prediction.points || 0}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center gap-3">
+              <input
+                disabled={locked}
+                type="number"
+                min="0"
+                value={localScore.home ?? ""}
+                onChange={(e) =>
+                  setScores({
+                    ...scores,
+                    [match.id]: {
+                      ...scores[match.id],
+                      home: e.target.value,
+                    },
+                  })
+                }
+                className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
+              />
+
+              <span className="text-2xl font-black">-</span>
+
+              <input
+                disabled={locked}
+                type="number"
+                min="0"
+                value={localScore.away ?? ""}
+                onChange={(e) =>
+                  setScores({
+                    ...scores,
+                    [match.id]: {
+                      ...scores[match.id],
+                      away: e.target.value,
+                    },
+                  })
+                }
+                className="w-20 rounded-2xl bg-[#12091f]/70 p-4 text-center text-xl font-black text-white"
+              />
+
+              <button
+                onClick={() => savePrediction(match)}
+                disabled={locked}
+                className="rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-40"
+              >
+                Valider
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+)}
 
 {tab === "classement" && (
   <section className="rounded-3xl border border-[#3b2458] bg-[#211433]/90 p-6">
@@ -689,12 +685,6 @@ className={`rounded-3xl border p-6 ${
       ))}
   </section>
 )}
-  </section>
-)}
-              </section>
-            )}
-
-            {tab === "groupes" && (
               <section className="grid gap-5 md:grid-cols-2">
                 {groupNames.map((groupName) => {
                   const standings = getGroupStandings(groupName);
