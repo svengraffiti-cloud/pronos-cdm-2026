@@ -99,14 +99,12 @@ export default function Home() {
 
   function sendLocalNotification(title, body) {
     if (typeof window === "undefined") return;
-
     if (!("Notification" in window)) return;
 
     if (Notification.permission === "granted") {
       new Notification(title, {
         body,
         icon: "/logo.png",
-        badge: "/logo.png",
       });
     }
   }
@@ -127,34 +125,17 @@ export default function Home() {
     return outputArray;
   }
 
-  async function getPushRegistration() {
-    if (typeof window === "undefined") return null;
-
-    if (!("serviceWorker" in navigator)) {
-      alert("Ton navigateur ne supporte pas les Service Workers.");
-      return null;
-    }
-
-    if (!("PushManager" in window)) {
-      alert("Ton navigateur ne supporte pas les notifications push.");
-      return null;
-    }
-
-    return navigator.serviceWorker.register("/sw.js");
-  }
-
   async function requestNotifications() {
     try {
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-      if (!vapidPublicKey) {
-        alert("Clé VAPID publique manquante.");
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        alert("Notifications non supportées.");
         return;
       }
 
-      const registration = await getPushRegistration();
-
-      if (!registration) return;
+      if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+        alert("Clé VAPID publique manquante.");
+        return;
+      }
 
       const permission = await Notification.requestPermission();
 
@@ -164,12 +145,16 @@ export default function Home() {
         return;
       }
 
+      const registration = await navigator.serviceWorker.register("/sw.js");
+
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          applicationServerKey: urlBase64ToUint8Array(
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          ),
         });
       }
 
@@ -190,44 +175,17 @@ export default function Home() {
       }
 
       setNotificationsEnabled(true);
+
       sendLocalNotification(
         "Les Pronos de Papy 👴🏻",
-        "Notifications activées avec succès."
+        "Notifications activées."
       );
+
       alert("Notifications activées 👴🏻");
     } catch (error) {
       console.error(error);
       setNotificationsEnabled(false);
-      alert("Erreur pendant l'activation des notifications.");
-    }
-  }
-
-  async function checkNotificationsStatus() {
-    try {
-      if (typeof window === "undefined") return;
-
-      if (!("Notification" in window)) {
-        setNotificationsEnabled(false);
-        return;
-      }
-
-      if (Notification.permission !== "granted") {
-        setNotificationsEnabled(false);
-        return;
-      }
-
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        setNotificationsEnabled(false);
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.getRegistration("/sw.js");
-      const subscription = await registration?.pushManager.getSubscription();
-
-      setNotificationsEnabled(Boolean(subscription));
-    } catch (error) {
-      console.error(error);
-      setNotificationsEnabled(false);
+      alert("Erreur notifications.");
     }
   }
 
@@ -304,7 +262,6 @@ export default function Home() {
 
   async function refreshEverything(userId = session?.user?.id) {
     if (!userId) return;
-
     await Promise.all([loadProfile(userId), loadData()]);
   }
 
@@ -348,7 +305,36 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    checkNotificationsStatus();
+    async function checkNotifications() {
+      try {
+        if (typeof window === "undefined") return;
+
+        if (!("Notification" in window)) {
+          setNotificationsEnabled(false);
+          return;
+        }
+
+        if (Notification.permission !== "granted") {
+          setNotificationsEnabled(false);
+          return;
+        }
+
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+          setNotificationsEnabled(false);
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+        const subscription = await registration?.pushManager.getSubscription();
+
+        setNotificationsEnabled(Boolean(subscription));
+      } catch (error) {
+        console.error(error);
+        setNotificationsEnabled(false);
+      }
+    }
+
+    checkNotifications();
   }, []);
 
   useEffect(() => {
@@ -516,14 +502,6 @@ export default function Home() {
     return predictions.find(
       (p) => p.player_id === currentPlayerId && p.match_id === matchId
     );
-  }
-
-  function getMatchPredictions(matchId) {
-    return predictions
-      .filter((prediction) => prediction.match_id === matchId)
-      .sort((a, b) =>
-        (a.players?.name || "").localeCompare(b.players?.name || "")
-      );
   }
 
   function getMatchPredictionRows(matchId) {
