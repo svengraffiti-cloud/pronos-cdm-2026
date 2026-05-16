@@ -198,13 +198,13 @@ export default function Home() {
   const [creatingProfile, setCreatingProfile] = useState(false);
 
   const [tab, setTab] = useState("pronos");
-  const [matchFilter, setMatchFilter] = useState("ALL");
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [teams, setTeams] = useState([]);
   const [newPlayer, setNewPlayer] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingPredictions, setLoadingPredictions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [scores, setScores] = useState({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -216,16 +216,6 @@ export default function Home() {
     SF: "Demi-finales",
     FINAL: "Finale",
   };
-
-  const matchFilterOptions = [
-    { id: "ALL", label: "Tous" },
-    { id: "GROUP", label: "Groupes" },
-    { id: "R32", label: "16es" },
-    { id: "R16", label: "8es" },
-    { id: "QF", label: "Quarts" },
-    { id: "SF", label: "Demies" },
-    { id: "FINAL", label: "Finale" },
-  ];
 
   const isAdmin = profile?.role === "admin";
   const currentPlayerId = profile?.player_id;
@@ -246,12 +236,6 @@ export default function Home() {
         ),
     [matches]
   );
-
-  const filteredMatches = useMemo(() => {
-    if (matchFilter === "ALL") return matches;
-
-    return matches.filter((match) => match.stage === matchFilter);
-  }, [matches, matchFilter]);
 
   const predictionByPlayerAndMatch = useMemo(() => {
     const map = new Map();
@@ -443,80 +427,155 @@ export default function Home() {
   }
 
   async function loadProfile(userId) {
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
 
+    if (profileError) {
+      console.error("Erreur chargement profil:", profileError);
+      setProfile(null);
+      setCurrentPlayer(null);
+      return null;
+    }
+
     setProfile(profileData || null);
 
     if (profileData?.player_id) {
-      const { data: playerData } = await supabase
+      const { data: playerData, error: playerError } = await supabase
         .from("players")
         .select("*")
         .eq("id", profileData.player_id)
         .maybeSingle();
 
+      if (playerError) {
+        console.error("Erreur chargement joueur:", playerError);
+      }
+
       setCurrentPlayer(playerData || null);
     } else {
       setCurrentPlayer(null);
     }
+
+    return profileData || null;
   }
 
   async function loadData(options = {}) {
     const silent = options.silent || false;
+    const activePlayerId = options.currentPlayerId || currentPlayerId;
 
     if (silent) {
       setRefreshing(true);
     } else {
       setLoading(true);
+      setLoadingPredictions(true);
     }
 
     try {
-      const [playersResult, matchesResult, predictionsResult, teamsResult] =
-        await Promise.all([
-          supabase
-            .from("players")
-            .select("id, name, avatar_url, created_at")
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("matches")
-            .select(
-              "id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score"
-            )
-            .order("match_date", { ascending: true }),
-          supabase
-            .from("predictions")
-            .select(
-              "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
-            ),
-          supabase
-            .from("teams")
-            .select("id, name, group_name")
-            .order("group_name", { ascending: true }),
-        ]);
+      if (silent) {
+        const [playersResult, matchesResult, predictionsResult, teamsResult] =
+          await Promise.all([
+            supabase
+              .from("players")
+              .select("id, name, avatar_url, created_at")
+              .order("created_at", { ascending: true }),
+            supabase
+              .from("matches")
+              .select(
+                "id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score"
+              )
+              .order("match_date", { ascending: true }),
+            supabase
+              .from("predictions")
+              .select(
+                "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+              ),
+            supabase
+              .from("teams")
+              .select("id, name, group_name")
+              .order("group_name", { ascending: true }),
+          ]);
+
+        if (playersResult.error) throw playersResult.error;
+        if (matchesResult.error) throw matchesResult.error;
+        if (predictionsResult.error) throw predictionsResult.error;
+        if (teamsResult.error) throw teamsResult.error;
+
+        setPlayers(playersResult.data || []);
+        setMatches(matchesResult.data || []);
+        setPredictions(predictionsResult.data || []);
+        setTeams(teamsResult.data || []);
+        return;
+      }
+
+      // Chargement critique d'abord : ce qui permet d'afficher l'app vite.
+      const [playersResult, matchesResult, teamsResult] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id, name, avatar_url, created_at")
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("matches")
+          .select(
+            "id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score"
+          )
+          .order("match_date", { ascending: true }),
+        supabase
+          .from("teams")
+          .select("id, name, group_name")
+          .order("group_name", { ascending: true }),
+      ]);
+
+      if (playersResult.error) throw playersResult.error;
+      if (matchesResult.error) throw matchesResult.error;
+      if (teamsResult.error) throw teamsResult.error;
 
       setPlayers(playersResult.data || []);
       setMatches(matchesResult.data || []);
-      setPredictions(predictionsResult.data || []);
       setTeams(teamsResult.data || []);
+
+      // L'écran principal peut s'afficher maintenant. Les pronos arrivent ensuite.
+      setLoading(false);
+
+      if (activePlayerId) {
+        const { data: myPredictions, error: myPredictionsError } = await supabase
+          .from("predictions")
+          .select(
+            "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+          )
+          .eq("player_id", activePlayerId);
+
+        if (!myPredictionsError) {
+          setPredictions(myPredictions || []);
+        }
+      }
+
+      const { data: allPredictions, error: allPredictionsError } = await supabase
+        .from("predictions")
+        .select(
+          "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+        );
+
+      if (allPredictionsError) throw allPredictionsError;
+
+      setPredictions(allPredictions || []);
     } catch (error) {
       console.error("Erreur chargement données:", error);
     } finally {
-      if (silent) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
+      setLoadingPredictions(false);
+      setRefreshing(false);
     }
   }
 
   async function refreshEverything(userId = session?.user?.id, options = {}) {
-    if (!userId) return;
+    if (!userId) return null;
 
-    await loadProfile(userId);
-    await loadData(options);
+    const loadedProfile = await loadProfile(userId);
+    await loadData({ ...options, currentPlayerId: loadedProfile?.player_id });
+
+    return loadedProfile;
   }
 
   useEffect(() => {
@@ -525,10 +584,14 @@ export default function Home() {
       setSession(data.session || null);
 
       if (data.session?.user?.id) {
-        await refreshEverything(data.session.user.id);
+        const loadedProfile = await loadProfile(data.session.user.id);
+        setAuthLoading(false);
+        await loadData({ currentPlayerId: loadedProfile?.player_id });
+        return;
       }
 
       setAuthLoading(false);
+      setLoading(false);
     }
 
     initAuth();
@@ -538,7 +601,9 @@ export default function Home() {
         setSession(nextSession || null);
 
         if (nextSession?.user?.id) {
-          await refreshEverything(nextSession.user.id);
+          const loadedProfile = await loadProfile(nextSession.user.id);
+          setAuthLoading(false);
+          await loadData({ currentPlayerId: loadedProfile?.player_id });
         } else {
           setProfile(null);
           setCurrentPlayer(null);
@@ -547,9 +612,10 @@ export default function Home() {
           setPredictions([]);
           setTeams([]);
           setNotificationsEnabled(false);
+          setLoading(false);
+          setLoadingPredictions(false);
+          setAuthLoading(false);
         }
-
-        setAuthLoading(false);
       }
     );
 
@@ -1327,9 +1393,9 @@ export default function Home() {
           ))}
         </nav>
 
-        {refreshing && !loading && (
+        {(refreshing || loadingPredictions) && !loading && (
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-center text-sm font-black text-emerald-200 shadow-xl backdrop-blur-md">
-            Mise à jour en cours...
+            {loadingPredictions ? "Chargement des pronos en arrière-plan..." : "Mise à jour en cours..."}
           </div>
         )}
 
@@ -1364,31 +1430,8 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-4 shadow-xl backdrop-blur-md">
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {matchFilterOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => setMatchFilter(option.id)}
-                        className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
-                          matchFilter === option.id
-                            ? "bg-emerald-500 text-[#07130d] shadow-lg shadow-emerald-950/30"
-                            : "bg-white/5 text-slate-100 ring-1 ring-white/10 hover:bg-emerald-500/20"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <p className="mt-3 text-center text-sm font-bold text-slate-300">
-                    {filteredMatches.length} match{filteredMatches.length > 1 ? "s" : ""} affiché{filteredMatches.length > 1 ? "s" : ""}
-                  </p>
-                </div>
-
                 <div className="grid gap-5 md:grid-cols-2">
-                  {filteredMatches.map((match) => (
+                  {matches.map((match) => (
                     <MatchCard
                       key={match.id}
                       match={match}
