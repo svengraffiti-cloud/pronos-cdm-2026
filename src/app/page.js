@@ -20,7 +20,7 @@ function AppShell({ children }) {
     <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
       <div className="fixed inset-0 -z-20">
         <img
-          src="./stadium.jpg"
+          src="/stadium.jpg"
           alt="Stade"
           className="absolute inset-0 h-full w-full object-cover opacity-70"
         />
@@ -444,7 +444,7 @@ export default function Home() {
     if (Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "./logo.png",
+        icon: "/logo.png",
       });
     }
   }
@@ -1289,7 +1289,7 @@ export default function Home() {
         <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-6 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
             <img
-              src="./stadium.jpg"
+              src="/stadium.jpg"
               alt="Stade"
               className="absolute inset-0 h-full w-full object-cover opacity-35"
             />
