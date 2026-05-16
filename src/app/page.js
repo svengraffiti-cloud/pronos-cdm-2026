@@ -463,25 +463,50 @@ export default function Home() {
   }
 
   async function requestNotifications() {
-    try {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        alert("Notifications non supportées.");
-        return;
-      }
+  try {
+    const { PushNotifications } = await import("@capacitor/push-notifications");
 
-      if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-        alert("Clé VAPID publique manquante.");
-        return;
-      }
+    const permission = await PushNotifications.requestPermissions();
 
-      const permission = await Notification.requestPermission();
+    if (permission.receive !== "granted") {
+      setNotificationsEnabled(false);
+      alert("Notifications refusées.");
+      return;
+    }
 
-      if (permission !== "granted") {
-        setNotificationsEnabled(false);
-        alert("Notifications refusées.");
-        return;
-      }
+    await PushNotifications.register();
 
+    PushNotifications.addListener("registration", async (token) => {
+      console.log("Token push:", token.value);
+
+      setNotificationsEnabled(true);
+
+      await fetch("/api/save-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token.value,
+          user_id: session?.user?.id || null,
+          player_id: currentPlayerId || null,
+          platform: "ios",
+        }),
+      });
+
+      alert("Notifications activées 👴🏻");
+    });
+
+    PushNotifications.addListener("registrationError", (error) => {
+      console.error("Erreur push:", error);
+      setNotificationsEnabled(false);
+      alert("Erreur activation notifications.");
+    });
+  } catch (error) {
+    console.error(error);
+    setNotificationsEnabled(false);
+    alert("Notifications non supportées sur cette version.");
+  }
       const registration = await navigator.serviceWorker.register("/sw.js");
 
       let subscription = await registration.pushManager.getSubscription();
