@@ -463,91 +463,53 @@ export default function Home() {
   }
 
   async function requestNotifications() {
-  try {
-    const { PushNotifications } = await import("@capacitor/push-notifications");
+    try {
+      const { PushNotifications } = await import("@capacitor/push-notifications");
 
-    const permission = await PushNotifications.requestPermissions();
+      const permission = await PushNotifications.requestPermissions();
 
-    if (permission.receive !== "granted") {
-      setNotificationsEnabled(false);
-      alert("Notifications refusées.");
-      return;
-    }
+      if (permission.receive !== "granted") {
+        setNotificationsEnabled(false);
+        alert("Notifications refusées.");
+        return;
+      }
 
-    await PushNotifications.register();
+      await PushNotifications.register();
 
-    PushNotifications.addListener("registration", async (token) => {
-      console.log("Token push:", token.value);
+      PushNotifications.addListener("registration", async (token) => {
+        console.log("Token push:", token.value);
 
-      setNotificationsEnabled(true);
+        setNotificationsEnabled(true);
 
-      await fetch("/api/save-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token.value,
-          user_id: session?.user?.id || null,
-          player_id: currentPlayerId || null,
-          platform: "ios",
-        }),
-      });
-
-      alert("Notifications activées 👴🏻");
-    });
-
-    PushNotifications.addListener("registrationError", (error) => {
-      console.error("Erreur push:", error);
-      setNotificationsEnabled(false);
-      alert("Erreur activation notifications.");
-    });
-  } catch (error) {
-    console.error(error);
-    setNotificationsEnabled(false);
-    alert("Notifications non supportées sur cette version.");
-  }
-      const registration = await navigator.serviceWorker.register("/sw.js");
-
-      let subscription = await registration.pushManager.getSubscription();
-
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-          ),
+        const response = await fetch("/api/save-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token.value,
+            user_id: session?.user?.id || null,
+            player_id: currentPlayerId || null,
+            platform: "ios",
+          }),
         });
-      }
 
-      const response = await fetch("/api/save-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subscription,
-          user_id: session?.user?.id || null,
-          player_id: currentPlayerId || null,
-        }),
+        if (!response.ok) {
+          throw new Error("Impossible d'enregistrer le token push.");
+        }
+
+        alert("Notifications activées 👴🏻");
       });
 
-      if (!response.ok) {
-        throw new Error("Impossible d'enregistrer l'abonnement push.");
-      }
-
-      setNotificationsEnabled(true);
-
-      sendLocalNotification(
-        "Les Pronos de Papy 👴🏻",
-        "Notifications activées."
-      );
-
-      alert("Notifications activées 👴🏻");
+      PushNotifications.addListener("registrationError", (error) => {
+        console.error("Erreur push:", error);
+        setNotificationsEnabled(false);
+        alert("Erreur activation notifications.");
+      });
     } catch (error) {
       console.error(error);
       setNotificationsEnabled(false);
-      alert("Erreur notifications.");
+      alert("Notifications non supportées sur cette version.");
     }
   }
 
