@@ -89,6 +89,46 @@ export default function Home() {
     [matches]
   );
 
+  const predictionByPlayerAndMatch = useMemo(() => {
+    const map = new Map();
+
+    predictions.forEach((prediction) => {
+      map.set(`${prediction.player_id}-${prediction.match_id}`, prediction);
+    });
+
+    return map;
+  }, [predictions]);
+
+  const playerTotals = useMemo(() => {
+    const totals = new Map();
+
+    players.forEach((player) => {
+      totals.set(player.id, 0);
+    });
+
+    predictions.forEach((prediction) => {
+      totals.set(
+        prediction.player_id,
+        (totals.get(prediction.player_id) || 0) + (prediction.points || 0)
+      );
+    });
+
+    return totals;
+  }, [players, predictions]);
+
+  const sortedPlayers = useMemo(
+    () => [...players].sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    [players]
+  );
+
+  const rankingPlayers = useMemo(
+    () =>
+      [...players].sort(
+        (a, b) => (playerTotals.get(b.id) || 0) - (playerTotals.get(a.id) || 0)
+      ),
+    [players, playerTotals]
+  );
+
   const isMatchLocked = (matchDate) => {
     const lockTime = new Date(matchDate).getTime() - 90 * 60 * 1000;
     return Date.now() >= lockTime;
@@ -518,24 +558,14 @@ export default function Home() {
   }
 
   function getPrediction(matchId) {
-    return predictions.find(
-      (p) => p.player_id === currentPlayerId && p.match_id === matchId
-    );
+    return predictionByPlayerAndMatch.get(`${currentPlayerId}-${matchId}`);
   }
 
   function getMatchPredictionRows(matchId) {
-    return [...players]
-      .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
-      .map((player) => {
-        const prediction = predictions.find(
-          (item) => item.match_id === matchId && item.player_id === player.id
-        );
-
-        return {
-          player,
-          prediction,
-        };
-      });
+    return sortedPlayers.map((player) => ({
+      player,
+      prediction: predictionByPlayerAndMatch.get(`${player.id}-${matchId}`),
+    }));
   }
 
   function calculatePredictionPoints(prediction, match) {
@@ -662,9 +692,7 @@ export default function Home() {
   }
 
   function playerTotal(playerId) {
-    return predictions
-      .filter((p) => p.player_id === playerId)
-      .reduce((total, p) => total + (p.points || 0), 0);
+    return playerTotals.get(playerId) || 0;
   }
 
   function getGroupStandings(groupName) {
@@ -1289,9 +1317,7 @@ export default function Home() {
                   Classement joueurs
                 </h2>
 
-                {[...players]
-                  .sort((a, b) => playerTotal(b.id) - playerTotal(a.id))
-                  .map((player, index) => (
+                {rankingPlayers.map((player, index) => (
                     <div
                       key={player.id}
                       className="mb-3 flex items-center justify-between rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
