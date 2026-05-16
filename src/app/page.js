@@ -314,6 +314,107 @@ export default function Home() {
     return map;
   }, [matches, sortedPlayers, predictionByPlayerAndMatch]);
 
+  const groupStandingsByName = useMemo(() => {
+    const map = new Map();
+
+    groupNames.forEach((groupName) => {
+      const groupTeams = teams
+        .filter((team) => team.group_name === groupName)
+        .map((team) => ({
+          name: team.name,
+          played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDifference: 0,
+          points: 0,
+        }));
+
+      const groupMatches = matches.filter(
+        (match) =>
+          match.stage === "GROUP" &&
+          match.group_name === groupName &&
+          match.home_score !== null &&
+          match.away_score !== null
+      );
+
+      groupMatches.forEach((match) => {
+        const home = groupTeams.find((team) => team.name === match.home_team);
+        const away = groupTeams.find((team) => team.name === match.away_team);
+
+        if (!home || !away) return;
+
+        const homeScore = Number(match.home_score);
+        const awayScore = Number(match.away_score);
+
+        home.played += 1;
+        away.played += 1;
+        home.goalsFor += homeScore;
+        home.goalsAgainst += awayScore;
+        away.goalsFor += awayScore;
+        away.goalsAgainst += homeScore;
+
+        if (homeScore > awayScore) {
+          home.wins += 1;
+          away.losses += 1;
+          home.points += 3;
+        } else if (awayScore > homeScore) {
+          away.wins += 1;
+          home.losses += 1;
+          away.points += 3;
+        } else {
+          home.draws += 1;
+          away.draws += 1;
+          home.points += 1;
+          away.points += 1;
+        }
+      });
+
+      groupTeams.forEach((team) => {
+        team.goalDifference = team.goalsFor - team.goalsAgainst;
+      });
+
+      map.set(
+        groupName,
+        groupTeams.sort(
+          (a, b) =>
+            b.points - a.points ||
+            b.goalDifference - a.goalDifference ||
+            b.goalsFor - a.goalsFor ||
+            a.name.localeCompare(b.name)
+        )
+      );
+    });
+
+    return map;
+  }, [groupNames, teams, matches]);
+
+  const qualifiedTeamsMemo = useMemo(() => {
+    const qualified = [];
+
+    groupNames.forEach((groupName) => {
+      const standings = groupStandingsByName.get(groupName) || [];
+
+      if (standings[0]) {
+        qualified.push({
+          label: `1er Groupe ${groupName}`,
+          team: standings[0].name,
+        });
+      }
+
+      if (standings[1]) {
+        qualified.push({
+          label: `2e Groupe ${groupName}`,
+          team: standings[1].name,
+        });
+      }
+    });
+
+    return qualified;
+  }, [groupNames, groupStandingsByName]);
+
   const isMatchLocked = (matchDate) => {
     const lockTime = new Date(matchDate).getTime() - 90 * 60 * 1000;
     return Date.now() >= lockTime;
@@ -952,95 +1053,11 @@ export default function Home() {
   }
 
   function getGroupStandings(groupName) {
-    const groupTeams = teams
-      .filter((team) => team.group_name === groupName)
-      .map((team) => ({
-        name: team.name,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        goalDifference: 0,
-        points: 0,
-      }));
-
-    const groupMatches = matches.filter(
-      (match) =>
-        match.stage === "GROUP" &&
-        match.group_name === groupName &&
-        match.home_score !== null &&
-        match.away_score !== null
-    );
-
-    groupMatches.forEach((match) => {
-      const home = groupTeams.find((team) => team.name === match.home_team);
-      const away = groupTeams.find((team) => team.name === match.away_team);
-
-      if (!home || !away) return;
-
-      const homeScore = Number(match.home_score);
-      const awayScore = Number(match.away_score);
-
-      home.played += 1;
-      away.played += 1;
-      home.goalsFor += homeScore;
-      home.goalsAgainst += awayScore;
-      away.goalsFor += awayScore;
-      away.goalsAgainst += homeScore;
-
-      if (homeScore > awayScore) {
-        home.wins += 1;
-        away.losses += 1;
-        home.points += 3;
-      } else if (awayScore > homeScore) {
-        away.wins += 1;
-        home.losses += 1;
-        away.points += 3;
-      } else {
-        home.draws += 1;
-        away.draws += 1;
-        home.points += 1;
-        away.points += 1;
-      }
-    });
-
-    groupTeams.forEach((team) => {
-      team.goalDifference = team.goalsFor - team.goalsAgainst;
-    });
-
-    return groupTeams.sort(
-      (a, b) =>
-        b.points - a.points ||
-        b.goalDifference - a.goalDifference ||
-        b.goalsFor - a.goalsFor ||
-        a.name.localeCompare(b.name)
-    );
+    return groupStandingsByName.get(groupName) || [];
   }
 
   function getQualifiedTeams() {
-    const qualified = [];
-
-    groupNames.forEach((groupName) => {
-      const standings = getGroupStandings(groupName);
-
-      if (standings[0]) {
-        qualified.push({
-          label: `1er Groupe ${groupName}`,
-          team: standings[0].name,
-        });
-      }
-
-      if (standings[1]) {
-        qualified.push({
-          label: `2e Groupe ${groupName}`,
-          team: standings[1].name,
-        });
-      }
-    });
-
-    return qualified;
+    return qualifiedTeamsMemo;
   }
 
   function getWinner(match) {
