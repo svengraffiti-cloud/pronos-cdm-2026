@@ -1,5 +1,3 @@
-CODE COMPLET PAGE.JS
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
