@@ -638,7 +638,28 @@ export default function Home() {
       });
     }
 
-    await loadData({ silent: true });
+    const { data: refreshedPrediction, error } = await supabase
+      .from("predictions")
+      .select(
+        "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+      )
+      .eq("player_id", currentPlayerId)
+      .eq("match_id", match.id)
+      .single();
+
+    if (error) {
+      console.error("Erreur récupération prono:", error);
+      await loadData({ silent: true });
+      return;
+    }
+
+    setPredictions((prev) => {
+      const filtered = prev.filter(
+        (p) => !(p.player_id === currentPlayerId && p.match_id === match.id)
+      );
+
+      return [...filtered, refreshedPrediction];
+    });
   }
 
   async function saveOfficialScore(matchId) {
