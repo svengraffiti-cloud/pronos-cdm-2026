@@ -1448,23 +1448,94 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  {matches.map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      locked={isMatchLocked(match.match_date)}
-                      finished={isMatchFinished(match)}
-                      prediction={getPrediction(match.id)}
-                      matchPredictionRows={getMatchPredictionRows(match.id)}
-                      localScore={scores[match.id] || {}}
-                      currentPlayerId={currentPlayerId}
-                      roundLabels={roundLabels}
-                      formattedDate={formatDate(match.match_date)}
-                      onScoreChange={handlePredictionScoreChange}
-                      onSavePrediction={savePrediction}
-                    />
-                  ))}
+                <div className="space-y-10">
+
+                  <div>
+                    <div className="mb-5 flex items-center gap-3">
+                      <span className="text-3xl">🔥</span>
+
+                      <div>
+                        <h2 className="text-2xl font-black">
+                          Paris ouverts
+                        </h2>
+
+                        <p className="text-sm text-slate-300">
+                          Pronostique les prochains matchs avant verrouillage.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      {matches
+                        .filter(
+                          (match) =>
+                            match.home_score === null ||
+                            match.home_score === undefined ||
+                            match.away_score === null ||
+                            match.away_score === undefined
+                        )
+                        .map((match) => (
+                          <MatchCard
+                            key={match.id}
+                            match={match}
+                            locked={isMatchLocked(match.match_date)}
+                            finished={isMatchFinished(match)}
+                            prediction={getPrediction(match.id)}
+                            matchPredictionRows={getMatchPredictionRows(match.id)}
+                            localScore={scores[match.id] || {}}
+                            currentPlayerId={currentPlayerId}
+                            roundLabels={roundLabels}
+                            formattedDate={formatDate(match.match_date)}
+                            onScoreChange={handlePredictionScoreChange}
+                            onSavePrediction={savePrediction}
+                          />
+                        ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-5 flex items-center gap-3">
+                      <span className="text-3xl">✅</span>
+
+                      <div>
+                        <h2 className="text-2xl font-black">
+                          Matchs terminés
+                        </h2>
+
+                        <p className="text-sm text-slate-300">
+                          Historique des matchs déjà joués et points gagnés.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 opacity-90 md:grid-cols-2">
+                      {matches
+                        .filter(
+                          (match) =>
+                            match.home_score !== null &&
+                            match.home_score !== undefined &&
+                            match.away_score !== null &&
+                            match.away_score !== undefined
+                        )
+                        .map((match) => (
+                          <MatchCard
+                            key={match.id}
+                            match={match}
+                            locked={isMatchLocked(match.match_date)}
+                            finished={isMatchFinished(match)}
+                            prediction={getPrediction(match.id)}
+                            matchPredictionRows={getMatchPredictionRows(match.id)}
+                            localScore={scores[match.id] || {}}
+                            currentPlayerId={currentPlayerId}
+                            roundLabels={roundLabels}
+                            formattedDate={formatDate(match.match_date)}
+                            onScoreChange={handlePredictionScoreChange}
+                            onSavePrediction={savePrediction}
+                          />
+                        ))}
+                    </div>
+                  </div>
+
                 </div>
               </section>
             )}
