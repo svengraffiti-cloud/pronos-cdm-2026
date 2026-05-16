@@ -743,7 +743,30 @@ export default function Home() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    try {
+      setLoading(true);
+
+      await supabase.auth.signOut();
+
+      setSession(null);
+      setProfile(null);
+      setCurrentPlayer(null);
+      setPlayers([]);
+      setMatches([]);
+      setPredictions([]);
+      setTeams([]);
+      setScores({});
+      setNotificationsEnabled(false);
+
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+    } catch (error) {
+      console.error("Erreur déconnexion:", error);
+      alert("Erreur pendant la déconnexion.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function formatDate(date) {
