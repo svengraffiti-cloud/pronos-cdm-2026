@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
@@ -20,13 +19,10 @@ function AppShell({ children }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
       <div className="fixed inset-0 -z-20">
-        <Image
-          src="/stadium.jpg"
+        <img
+          src="./stadium.jpg"
           alt="Stade"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover opacity-70"
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
         />
       </div>
 
@@ -37,59 +33,6 @@ function AppShell({ children }) {
     </main>
   );
 }
-
-
-function LogoImage({ className = "" }) {
-  const logoSources = [
-    "logo-clean.png?v=20260516",
-    "logo.png?v=20260516",
-    "./logo-clean.png?v=20260516",
-    "./logo.png?v=20260516",
-    "/logo-clean.png?v=20260516",
-    "/logo.png?v=20260516",
-    "icon-512.png?v=20260516",
-    "./icon-512.png?v=20260516",
-    "/icon-512.png?v=20260516",
-    "apple-touch-icon.png?v=20260516",
-    "./apple-touch-icon.png?v=20260516",
-    "/apple-touch-icon.png?v=20260516",
-  ];
-
-  const [logoIndex, setLogoIndex] = useState(0);
-  const [logoFailed, setLogoFailed] = useState(false);
-
-  if (logoFailed) {
-    return (
-      <div
-        aria-label="Logo Pronos Famille"
-        className={`flex items-center justify-center bg-gradient-to-br from-emerald-400/25 via-violet-600/25 to-slate-950 text-5xl ring-4 ring-emerald-300/40 ${className}`}
-      >
-        👴🏻
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={logoSources[logoIndex]}
-      alt=""
-      aria-label="Logo Pronos Famille"
-      draggable={false}
-      decoding="async"
-      className={className}
-      onError={(event) => {
-        event.currentTarget.removeAttribute("src");
-
-        if (logoIndex < logoSources.length - 1) {
-          setLogoIndex((current) => current + 1);
-        } else {
-          setLogoFailed(true);
-        }
-      }}
-    />
-  );
-}
-
 
 const MatchCard = memo(function MatchCard({
   match,
@@ -484,7 +427,7 @@ export default function Home() {
     if (Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "logo.png",
+        icon: "./logo.png",
       });
     }
   }
@@ -1134,7 +1077,11 @@ export default function Home() {
       <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <LogoImage className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
+            <img
+              src="./icon-512.png"
+              alt="Logo"
+              className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+            />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
               Chargement
@@ -1151,7 +1098,11 @@ export default function Home() {
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
-              <LogoImage className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
+              <img
+                src="./icon-512.png"
+                alt="Logo"
+                className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+              />
               <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
                 Coupe du Monde 2026
               </p>
@@ -1328,12 +1279,10 @@ export default function Home() {
       <div className="mx-auto max-w-7xl space-y-8 p-6">
         <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-6 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
-            <Image
-              src="/stadium.jpg"
+            <img
+              src="./stadium.jpg"
               alt="Stade"
-              fill
-              sizes="(max-width: 768px) 100vw, 1280px"
-              className="object-cover opacity-35"
+              className="absolute inset-0 h-full w-full object-cover opacity-35"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
           </div>
@@ -1341,7 +1290,14 @@ export default function Home() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
 
           <div className="flex flex-col items-center text-center">
-            <LogoImage className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36" />
+            <img
+              src="./icon-512.png"
+              alt="Logo Pronos Famille"
+              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
+              onError={(event) => {
+                event.currentTarget.src = "./apple-touch-icon.png";
+              }}
+            />
 
             <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
               Coupe du Monde 2026
@@ -1469,7 +1425,11 @@ export default function Home() {
 
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <LogoImage className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
+            <img
+              src="./icon-512.png"
+              alt="Logo"
+              className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+            />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
               Chargement
