@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   Trophy,
@@ -33,6 +33,153 @@ function AppShell({ children }) {
     </main>
   );
 }
+
+const MatchCard = memo(function MatchCard({
+  match,
+  locked,
+  finished,
+  prediction,
+  matchPredictionRows,
+  localScore,
+  currentPlayerId,
+  roundLabels,
+  formattedDate,
+  onScoreChange,
+  onSavePrediction,
+}) {
+  return (
+    <div
+      className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
+        finished
+          ? "border-slate-700 bg-slate-950/70 opacity-90"
+          : "border-white/15 bg-[#12091f]/75"
+      }`}
+    >
+      <div className="mb-3 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
+        {match.stage === "GROUP"
+          ? `Groupe ${match.group_name}`
+          : roundLabels[match.stage] || match.stage}
+      </div>
+
+      {finished && (
+        <div className="mb-3 ml-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-black text-white">
+          TERMINÉ
+        </div>
+      )}
+
+      <h3 className="text-2xl font-black">
+        {match.home_team} - {match.away_team}
+      </h3>
+
+      <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
+
+      <p className={`mt-2 font-black ${locked ? "text-red-400" : "text-emerald-400"}`}>
+        {locked ? "🔒 Paris verrouillés" : "🟢 Paris ouverts"}
+      </p>
+
+      {!locked && (
+        <p className="mt-1 text-xs font-bold text-slate-400">
+          Verrouillage 1h30 avant le match.
+        </p>
+      )}
+
+      {prediction && (
+        <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3 ring-1 ring-emerald-300/20">
+          <p className="font-black text-emerald-300">
+            Ton pronostic : {prediction.predicted_home} - {prediction.predicted_away}
+          </p>
+
+          {finished && (
+            <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
+              <p className="text-sm font-black text-yellow-200">Points gagnés</p>
+
+              <p className="text-4xl font-black text-yellow-300">
+                +{prediction.points || 0}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <input
+          disabled={locked}
+          type="number"
+          min="0"
+          value={localScore.home ?? ""}
+          onChange={(e) => onScoreChange(match.id, "home", e.target.value)}
+          className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
+        />
+
+        <span className="text-2xl font-black">-</span>
+
+        <input
+          disabled={locked}
+          type="number"
+          min="0"
+          value={localScore.away ?? ""}
+          onChange={(e) => onScoreChange(match.id, "away", e.target.value)}
+          className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
+        />
+
+        <button
+          onClick={() => onSavePrediction(match, localScore)}
+          disabled={locked}
+          className="rounded-2xl bg-violet-600 px-5 py-4 font-black disabled:opacity-40"
+        >
+          Valider
+        </button>
+      </div>
+
+      {locked && (
+        <div className="mt-5 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
+          <h4 className="mb-3 font-black text-emerald-300">Pronos des participants</h4>
+
+          {matchPredictionRows.length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun joueur.</p>
+          ) : (
+            <div className="space-y-2">
+              {matchPredictionRows.map(({ player, prediction: item }) => {
+                const isMe = player.id === currentPlayerId;
+
+                return (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      {player.avatar_url ? (
+                        <img
+                          src={player.avatar_url}
+                          alt={player.name || "Joueur"}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <UserCircle className="h-8 w-8 text-slate-300" />
+                      )}
+                      <span className="font-bold">
+                        {player.name || "Joueur"}
+                        {isMe && (
+                          <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
+                            toi
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    <strong className={item ? "text-white" : "text-red-300"}>
+                      {item ? `${item.predicted_home} - ${item.predicted_away}` : "❌"}
+                    </strong>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 export default function Home() {
   const [session, setSession] = useState(null);
@@ -128,6 +275,37 @@ export default function Home() {
       ),
     [players, playerTotals]
   );
+
+
+  const currentPredictionByMatch = useMemo(() => {
+    const map = new Map();
+
+    if (!currentPlayerId) return map;
+
+    predictions.forEach((prediction) => {
+      if (prediction.player_id === currentPlayerId) {
+        map.set(prediction.match_id, prediction);
+      }
+    });
+
+    return map;
+  }, [currentPlayerId, predictions]);
+
+  const predictionRowsByMatch = useMemo(() => {
+    const map = new Map();
+
+    matches.forEach((match) => {
+      map.set(
+        match.id,
+        sortedPlayers.map((player) => ({
+          player,
+          prediction: predictionByPlayerAndMatch.get(`${player.id}-${match.id}`),
+        }))
+      );
+    });
+
+    return map;
+  }, [matches, sortedPlayers, predictionByPlayerAndMatch]);
 
   const isMatchLocked = (matchDate) => {
     const lockTime = new Date(matchDate).getTime() - 90 * 60 * 1000;
@@ -558,14 +736,11 @@ export default function Home() {
   }
 
   function getPrediction(matchId) {
-    return predictionByPlayerAndMatch.get(`${currentPlayerId}-${matchId}`);
+    return currentPredictionByMatch.get(matchId);
   }
 
   function getMatchPredictionRows(matchId) {
-    return sortedPlayers.map((player) => ({
-      player,
-      prediction: predictionByPlayerAndMatch.get(`${player.id}-${matchId}`),
-    }));
+    return predictionRowsByMatch.get(matchId) || [];
   }
 
   function calculatePredictionPoints(prediction, match) {
@@ -600,67 +775,80 @@ export default function Home() {
     return 0;
   }
 
-  async function savePrediction(match) {
-    if (!currentPlayerId) {
-      alert("Profil joueur introuvable.");
-      return;
-    }
+  const handlePredictionScoreChange = useCallback((matchId, side, value) => {
+    setScores((previousScores) => ({
+      ...previousScores,
+      [matchId]: {
+        ...previousScores[matchId],
+        [side]: value,
+      },
+    }));
+  }, []);
 
-    if (isMatchLocked(match.match_date)) {
-      alert("Paris verrouillés 1h30 avant le coup d'envoi.");
-      return;
-    }
+  const savePrediction = useCallback(
+    async (match, localScore) => {
+      if (!currentPlayerId) {
+        alert("Profil joueur introuvable.");
+        return;
+      }
 
-    const home = scores[match.id]?.home;
-    const away = scores[match.id]?.away;
+      if (isMatchLocked(match.match_date)) {
+        alert("Paris verrouillés 1h30 avant le coup d'envoi.");
+        return;
+      }
 
-    if (home === "" || away === "" || home === undefined || away === undefined) {
-      alert("Entre les scores.");
-      return;
-    }
+      const home = localScore?.home;
+      const away = localScore?.away;
 
-    const existing = getPrediction(match.id);
+      if (home === "" || away === "" || home === undefined || away === undefined) {
+        alert("Entre les scores.");
+        return;
+      }
 
-    if (existing) {
-      await supabase
-        .from("predictions")
-        .update({
+      const existing = predictionByPlayerAndMatch.get(`${currentPlayerId}-${match.id}`);
+
+      if (existing) {
+        await supabase
+          .from("predictions")
+          .update({
+            predicted_home: Number(home),
+            predicted_away: Number(away),
+          })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("predictions").insert({
+          player_id: currentPlayerId,
+          match_id: match.id,
           predicted_home: Number(home),
           predicted_away: Number(away),
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("predictions").insert({
-        player_id: currentPlayerId,
-        match_id: match.id,
-        predicted_home: Number(home),
-        predicted_away: Number(away),
+        });
+      }
+
+      const { data: refreshedPrediction, error } = await supabase
+        .from("predictions")
+        .select(
+          "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+        )
+        .eq("player_id", currentPlayerId)
+        .eq("match_id", match.id)
+        .single();
+
+      if (error) {
+        console.error("Erreur récupération prono:", error);
+        await loadData({ silent: true });
+        return;
+      }
+
+      setPredictions((prev) => {
+        const filtered = prev.filter(
+          (p) => !(p.player_id === currentPlayerId && p.match_id === match.id)
+        );
+
+        return [...filtered, refreshedPrediction];
       });
-    }
-
-    const { data: refreshedPrediction, error } = await supabase
-      .from("predictions")
-      .select(
-        "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
-      )
-      .eq("player_id", currentPlayerId)
-      .eq("match_id", match.id)
-      .single();
-
-    if (error) {
-      console.error("Erreur récupération prono:", error);
-      await loadData({ silent: true });
-      return;
-    }
-
-    setPredictions((prev) => {
-      const filtered = prev.filter(
-        (p) => !(p.player_id === currentPlayerId && p.match_id === match.id)
-      );
-
-      return [...filtered, refreshedPrediction];
-    });
-  }
+    },
+    [currentPlayerId, predictionByPlayerAndMatch]
+  );
 
   async function saveOfficialScore(matchId) {
     if (!isAdmin) {
@@ -1160,173 +1348,22 @@ export default function Home() {
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
-                  {matches.map((match) => {
-                    const locked = isMatchLocked(match.match_date);
-                    const finished = isMatchFinished(match);
-                    const prediction = getPrediction(match.id);
-                    const matchPredictionRows = getMatchPredictionRows(match.id);
-                    const localScore = scores[match.id] || {};
-
-                    return (
-                      <div
-                        key={match.id}
-                        className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
-                          finished
-                            ? "border-slate-700 bg-slate-950/70 opacity-90"
-                            : "border-white/15 bg-[#12091f]/75"
-                        }`}
-                      >
-                        <div className="mb-3 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
-                          {match.stage === "GROUP"
-                            ? `Groupe ${match.group_name}`
-                            : roundLabels[match.stage] || match.stage}
-                        </div>
-
-                        {finished && (
-                          <div className="mb-3 ml-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-black text-white">
-                            TERMINÉ
-                          </div>
-                        )}
-
-                        <h3 className="text-2xl font-black">
-                          {match.home_team} - {match.away_team}
-                        </h3>
-
-                        <p className="mt-2 text-sm text-slate-300">
-                          {formatDate(match.match_date)}
-                        </p>
-
-                        <p
-                          className={`mt-2 font-black ${
-                            locked ? "text-red-400" : "text-emerald-400"
-                          }`}
-                        >
-                          {locked ? "🔒 Paris verrouillés" : "🟢 Paris ouverts"}
-                        </p>
-
-                        {!locked && (
-                          <p className="mt-1 text-xs font-bold text-slate-400">
-                            Verrouillage 1h30 avant le match.
-                          </p>
-                        )}
-
-                        {prediction && (
-                          <div className="mt-3 rounded-2xl bg-emerald-500/20 p-3 ring-1 ring-emerald-300/20">
-                            <p className="font-black text-emerald-300">
-                              Ton pronostic : {prediction.predicted_home} - {prediction.predicted_away}
-                            </p>
-
-                            {finished && (
-                              <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
-                                <p className="text-sm font-black text-yellow-200">Points gagnés</p>
-
-                                <p className="text-4xl font-black text-yellow-300">
-                                  +{prediction.points || 0}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="mt-5 flex flex-wrap items-center gap-3">
-                          <input
-                            disabled={locked}
-                            type="number"
-                            min="0"
-                            value={localScore.home ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  home: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
-                          />
-
-                          <span className="text-2xl font-black">-</span>
-
-                          <input
-                            disabled={locked}
-                            type="number"
-                            min="0"
-                            value={localScore.away ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  away: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-[#12091f]/90 p-4 text-center text-xl font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400 disabled:opacity-40"
-                          />
-
-                          <button
-                            onClick={() => savePrediction(match)}
-                            disabled={locked}
-                            className="rounded-2xl bg-violet-600 px-5 py-4 font-black disabled:opacity-40"
-                          >
-                            Valider
-                          </button>
-                        </div>
-
-                        {locked && (
-                          <div className="mt-5 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
-                            <h4 className="mb-3 font-black text-emerald-300">
-                              Pronos des participants
-                            </h4>
-
-                            {matchPredictionRows.length === 0 ? (
-                              <p className="text-sm text-slate-400">Aucun joueur.</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {matchPredictionRows.map(({ player, prediction: item }) => {
-                                  const isMe = player.id === currentPlayerId;
-
-                                  return (
-                                    <div
-                                      key={player.id}
-                                      className="flex items-center justify-between rounded-xl bg-white/5 p-3"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        {player.avatar_url ? (
-                                          <img
-                                            src={player.avatar_url}
-                                            alt={player.name || "Joueur"}
-                                            className="h-8 w-8 rounded-full object-cover"
-                                          />
-                                        ) : (
-                                          <UserCircle className="h-8 w-8 text-slate-300" />
-                                        )}
-                                        <span className="font-bold">
-                                          {player.name || "Joueur"}
-                                          {isMe && (
-                                            <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
-                                              toi
-                                            </span>
-                                          )}
-                                        </span>
-                                      </div>
-
-                                      <strong className={item ? "text-white" : "text-red-300"}>
-                                        {item
-                                          ? `${item.predicted_home} - ${item.predicted_away}`
-                                          : "❌"}
-                                      </strong>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {matches.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      locked={isMatchLocked(match.match_date)}
+                      finished={isMatchFinished(match)}
+                      prediction={getPrediction(match.id)}
+                      matchPredictionRows={getMatchPredictionRows(match.id)}
+                      localScore={scores[match.id] || {}}
+                      currentPlayerId={currentPlayerId}
+                      roundLabels={roundLabels}
+                      formattedDate={formatDate(match.match_date)}
+                      onScoreChange={handlePredictionScoreChange}
+                      onSavePrediction={savePrediction}
+                    />
+                  ))}
                 </div>
               </section>
             )}
