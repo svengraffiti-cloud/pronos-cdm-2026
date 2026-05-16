@@ -13,7 +13,8 @@ export async function POST(req) {
     const body = await req.json();
 
     if (
-      body.secret !== process.env.NOTIFICATION_ADMIN_SECRET
+      body.secret !==
+      process.env.NOTIFICATION_ADMIN_SECRET
     ) {
       return NextResponse.json(
         { error: "Non autorisé" },
@@ -21,16 +22,18 @@ export async function POST(req) {
       );
     }
 
-    const { data: subscriptions, error } = await supabase
-      .from("push_subscriptions")
-      .select("*");
+    const { data: subscriptions, error } =
+      await supabase
+        .from("push_subscriptions")
+        .select("*");
 
     if (error) {
       throw error;
     }
 
     const payload = JSON.stringify({
-      title: body.title || "Les Pronos de Papy",
+      title:
+        body.title || "Les Pronos de Papy",
       body:
         body.message ||
         "Nouvelle notification disponible",
