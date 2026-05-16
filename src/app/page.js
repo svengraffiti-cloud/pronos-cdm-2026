@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
@@ -19,10 +20,13 @@ function AppShell({ children }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
       <div className="fixed inset-0 -z-20">
-        <img
+        <Image
           src="/stadium.jpg"
           alt="Stade"
-          className="h-full w-full object-cover opacity-70"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-70"
         />
       </div>
 
@@ -152,6 +156,8 @@ const MatchCard = memo(function MatchCard({
                         <img
                           src={player.avatar_url}
                           alt={player.name || "Joueur"}
+                          loading="lazy"
+                          decoding="async"
                           className="h-8 w-8 rounded-full object-cover"
                         />
                       ) : (
@@ -1058,10 +1064,13 @@ export default function Home() {
       <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <img
+            <Image
               src="/logo.png"
               alt="Logo"
-              className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+              width={112}
+              height={112}
+              priority
+              className="mb-6 rounded-3xl object-contain ring-4 ring-emerald-300/30"
             />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
@@ -1079,10 +1088,13 @@ export default function Home() {
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
-              <img
+              <Image
                 src="/logo.png"
                 alt="Logo"
-                className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+                width={112}
+                height={112}
+                priority
+                className="mx-auto mb-5 rounded-3xl object-contain ring-4 ring-emerald-300/30"
               />
               <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
                 Coupe du Monde 2026
@@ -1260,19 +1272,24 @@ export default function Home() {
       <div className="mx-auto max-w-7xl space-y-8 p-6">
         <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
-            <img
+            <Image
               src="/stadium.jpg"
               alt="Stade"
-              className="h-full w-full object-cover opacity-35"
+              fill
+              sizes="(max-width: 768px) 100vw, 1280px"
+              className="object-cover opacity-35"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
           </div>
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
 
           <div className="flex flex-col items-center text-center">
-            <img
+            <Image
               src="/logo.png"
               alt="Logo Pronos Famille"
+              width={144}
+              height={144}
+              priority
               className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
             />
 
@@ -1289,6 +1306,8 @@ export default function Home() {
                 <img
                   src={currentPlayer.avatar_url}
                   alt={currentPlayer.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-10 w-10 rounded-full object-cover"
                 />
               ) : (
@@ -1372,10 +1391,12 @@ export default function Home() {
 
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <img
+            <Image
               src="/logo.png"
               alt="Logo"
-              className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30"
+              width={96}
+              height={96}
+              className="mb-6 rounded-3xl object-contain ring-4 ring-emerald-300/30"
             />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
@@ -1439,6 +1460,8 @@ export default function Home() {
                           <img
                             src={player.avatar_url}
                             alt={player.name}
+                            loading="lazy"
+                            decoding="async"
                             className="h-9 w-9 rounded-full object-cover"
                           />
                         ) : (
