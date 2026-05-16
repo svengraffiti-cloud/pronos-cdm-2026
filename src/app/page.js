@@ -946,3 +946,64 @@ export default function Home() {
       </AppShell>
     );
   }
+  if (!profile || !currentPlayer) {
+    return (
+      <AppShell>
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+          <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
+            <div className="text-center">
+              <UserCircle className="mx-auto h-20 w-20 text-emerald-300" />
+              <h1 className="mt-4 text-3xl font-black">Créer ton profil joueur</h1>
+              <p className="mt-2 text-slate-300">
+                Ce profil sera lié à ton compte. Tu n’auras accès qu’à tes pronos.
+              </p>
+            </div>
+
+            <form onSubmit={createMissingProfile} className="mt-6 space-y-4">
+              <input
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Ton prénom / pseudo"
+                required
+                className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+              />
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                <Camera className="h-5 w-5 text-emerald-300" />
+                <span className="flex-1 text-sm text-slate-200">
+                  {profileAvatarFile ? profileAvatarFile.name : "Ajouter une photo de profil"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setProfileAvatarFile(e.target.files?.[0] || null)}
+                />
+              </label>
+
+              {authError && (
+                <p className="rounded-2xl bg-red-500/20 p-3 text-sm font-bold text-red-200">
+                  {authError}
+                </p>
+              )}
+
+              <button
+                disabled={creatingProfile}
+                className="w-full rounded-2xl bg-violet-600 px-5 py-4 font-black shadow-xl disabled:opacity-50"
+              >
+                {creatingProfile ? "Création..." : "Entrer dans l'app"}
+              </button>
+
+              <button
+                type="button"
+                onClick={signOut}
+                className="w-full rounded-2xl bg-white/10 px-5 py-4 font-black"
+              >
+                Déconnexion
+              </button>
+            </form>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
