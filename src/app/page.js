@@ -34,6 +34,72 @@ function AppShell({ children }) {
   );
 }
 
+
+const LOGO_FALLBACK_SVG =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#22c55e"/>
+          <stop offset="45%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+      <circle cx="256" cy="220" r="94" fill="#f8fafc" opacity="0.98"/>
+      <path d="M164 365c22-70 162-70 184 0" fill="#f8fafc" opacity="0.98"/>
+      <text x="256" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="900" fill="#ffffff">PAPY</text>
+      <text x="256" y="292" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="900" fill="#111827">👴</text>
+    </svg>
+  `);
+
+function getAssetUrl(fileName) {
+  if (typeof window === "undefined") return `/${fileName}`;
+
+  const cleanName = fileName.replace(/^\/+/, "");
+  const cacheKey = "v=logo-fix-2026-05-16";
+
+  return [
+    `/${cleanName}?${cacheKey}`,
+    `./${cleanName}?${cacheKey}`,
+    `${cleanName}?${cacheKey}`,
+    `${window.location.origin}/${cleanName}?${cacheKey}`,
+  ];
+}
+
+function AppLogo({ className = "", alt = "Logo Pronos Famille" }) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+
+  const sources = useMemo(() => {
+    if (typeof window === "undefined") return [LOGO_FALLBACK_SVG];
+
+    return [
+      ...getAssetUrl("icon-512.png"),
+      ...getAssetUrl("apple-touch-icon.png"),
+      ...getAssetUrl("logo.png"),
+      LOGO_FALLBACK_SVG,
+    ];
+  }, []);
+
+  const currentSource = sources[sourceIndex] || LOGO_FALLBACK_SVG;
+
+  return (
+    <img
+      src={currentSource}
+      alt={alt}
+      className={className}
+      decoding="async"
+      draggable={false}
+      onError={() => {
+        setSourceIndex((previousIndex) =>
+          previousIndex < sources.length - 1 ? previousIndex + 1 : previousIndex
+        );
+      }}
+    />
+  );
+}
+
 const MatchCard = memo(function MatchCard({
   match,
   locked,
@@ -1077,11 +1143,7 @@ export default function Home() {
       <AppShell>
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <img
-              src="./icon-512.png"
-              alt="Logo"
-              className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
-            />
+            <AppLogo className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
               Chargement
@@ -1098,11 +1160,7 @@ export default function Home() {
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
-              <img
-                src="./icon-512.png"
-                alt="Logo"
-                className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
-              />
+              <AppLogo className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
               <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
                 Coupe du Monde 2026
               </p>
@@ -1290,14 +1348,7 @@ export default function Home() {
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
 
           <div className="flex flex-col items-center text-center">
-            <img
-              src="./icon-512.png"
-              alt="Logo Pronos Famille"
-              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
-              onError={(event) => {
-                event.currentTarget.src = "./apple-touch-icon.png";
-              }}
-            />
+            <AppLogo className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36" />
 
             <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
               Coupe du Monde 2026
@@ -1425,11 +1476,7 @@ export default function Home() {
 
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <img
-              src="./icon-512.png"
-              alt="Logo"
-              className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30"
-            />
+            <AppLogo className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
             <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
               Chargement
