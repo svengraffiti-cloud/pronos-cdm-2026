@@ -1082,7 +1082,7 @@ export default function Home() {
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
           <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
             <Image
-              src="/logo.png"
+              src="/icon-512.png"
               alt="Logo"
               width={112}
               height={112}
@@ -1106,7 +1106,7 @@ export default function Home() {
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
               <Image
-                src="/logo.png"
+                src="/icon-512.png"
                 alt="Logo"
                 width={112}
                 height={112}
@@ -1287,7 +1287,7 @@ export default function Home() {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl space-y-8 p-6">
-        <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
+        <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-6 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
           <div className="absolute inset-0 -z-10">
             <Image
               src="/stadium.jpg"
@@ -1298,16 +1298,17 @@ export default function Home() {
             />
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
           </div>
+
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
 
           <div className="flex flex-col items-center text-center">
-            <Image
-              src="/logo.png"
+            <img
+              src="/icon-512.png"
               alt="Logo Pronos Famille"
-              width={144}
-              height={144}
-              priority
               className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
+              onError={(event) => {
+                event.currentTarget.src = "/apple-touch-icon.png";
+              }}
             />
 
             <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
@@ -1330,6 +1331,7 @@ export default function Home() {
               ) : (
                 <UserCircle className="h-10 w-10 text-emerald-300" />
               )}
+
               <div className="text-left">
                 <p className="text-xs text-slate-300">Connecté en tant que</p>
                 <p className="font-black">{currentPlayer?.name}</p>
@@ -1436,7 +1438,7 @@ export default function Home() {
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
             <Image
-              src="/logo.png"
+              src="/icon-512.png"
               alt="Logo"
               width={96}
               height={96}
