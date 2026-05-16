@@ -903,6 +903,40 @@ export default function Home() {
     const rh = Number(match.home_score);
     const ra = Number(match.away_score);
 
+    let points = 0;
+
+    // Score exact
+    if (ph === rh && pa === ra) {
+      return 3;
+    }
+
+    const predictedDiff = ph - pa;
+    const realDiff = rh - ra;
+
+    const predictedResult =
+      predictedDiff > 0 ? "home" : predictedDiff < 0 ? "away" : "draw";
+
+    const realResult =
+      realDiff > 0 ? "home" : realDiff < 0 ? "away" : "draw";
+
+    // Bon résultat
+    if (predictedResult === realResult) {
+      points += 1;
+    }
+
+    // Bon écart de buts
+    if (predictedDiff === realDiff) {
+      points += 1;
+    }
+
+    return points;
+  }
+
+    const ph = Number(prediction.predicted_home);
+    const pa = Number(prediction.predicted_away);
+    const rh = Number(match.home_score);
+    const ra = Number(match.away_score);
+
     if (ph === rh && pa === ra) return 3;
 
     const predictedDiff = ph - pa;
