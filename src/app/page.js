@@ -97,528 +97,68 @@ export default function Home() {
     return match.home_score !== null && match.away_score !== null;
   };
 
-  function sendLocalNotification(title, body) {
-    return;
-  }
+  async function subscribeToPush() {
+    if (!("serviceWorker" in navigator)) {
+      alert("Service Worker non supporté");
+      return;
+    }
 
-  async function requestNotifications() {
-    setNotificationsEnabled(false);
-    alert("Les notifications sont temporairement désactivées pour maintenance.");
-  }
+    if (!("PushManager" in window)) {
+      alert("Notifications push non supportées");
+      return;
+    }
 
-  async function uploadAvatar(file, userId) {
-    if (!file) return null;
+    const registration = await navigator.serviceWorker.register("/sw.js");
 
-    const extension = file.name.split(".").pop() || "jpg";
-    const path = `${userId}/${Date.now()}.${extension}`;
+    const permission = await Notification.requestPermission();
 
-    const { error } = await supabase.storage.from("avatars").upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
+    if (permission !== "granted") {
+      alert("Notifications refusées");
+      return;
+    }
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      ),
     });
 
-    if (error) throw error;
+    const token = JSON.stringify(subscription);
 
-    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-    return data.publicUrl;
-  }
-
-  async function loadProfile(userId) {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    setProfile(profileData || null);
-
-    if (profileData?.player_id) {
-      const { data: playerData } = await supabase
-        .from("players")
-        .select("*")
-        .eq("id", profileData.player_id)
-        .maybeSingle();
-
-      setCurrentPlayer(playerData || null);
-    } else {
-      setCurrentPlayer(null);
-    }
-  }
-
-  async function loadData() {
-    setLoading(true);
-
-    try {
-      const [playersResult, matchesResult, predictionsResult, teamsResult] =
-        await Promise.all([
-          supabase
-            .from("players")
-            .select("*")
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("matches")
-            .select("*")
-            .order("match_date", { ascending: true }),
-          supabase
-            .from("predictions")
-            .select("*, players:player_id(id, name, avatar_url)"),
-          supabase
-            .from("teams")
-            .select("*")
-            .order("group_name", { ascending: true }),
-        ]);
-
-      setPlayers(playersResult.data || []);
-      setMatches(matchesResult.data || []);
-      setPredictions(predictionsResult.data || []);
-      setTeams(teamsResult.data || []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function refreshEverything(userId = session?.user?.id) {
-    if (!userId) return;
-
-    await Promise.all([loadProfile(userId), loadData()]);
-  }
-
-  useEffect(() => {
-    async function initAuth() {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session || null);
-
-      if (data.session?.user?.id) {
-        await refreshEverything(data.session.user.id);
-      }
-
-      setAuthLoading(false);
-    }
-
-    initAuth();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, nextSession) => {
-        setSession(nextSession || null);
-
-        if (nextSession?.user?.id) {
-          await refreshEverything(nextSession.user.id);
-        } else {
-          setProfile(null);
-          setCurrentPlayer(null);
-          setPlayers([]);
-          setMatches([]);
-          setPredictions([]);
-          setTeams([]);
-        }
-
-        setAuthLoading(false);
-      }
-    );
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    setNotificationsEnabled(false);
-  }, []);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const channel = supabase
-      .channel("prediction-refresh")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "predictions",
-        },
-        async () => {
-          await loadData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    const nextScores = {};
-
-    predictions.forEach((prediction) => {
-      if (prediction.player_id === currentPlayerId) {
-        nextScores[prediction.match_id] = {
-          home: prediction.predicted_home,
-          away: prediction.predicted_away,
-        };
-      }
+    await supabase.from("push_tokens").upsert({
+      user_id: session.user.id,
+      player_id: currentPlayerId,
+      token,
+      platform: navigator.userAgent,
     });
 
-    matches.forEach((match) => {
-      nextScores[match.id] = {
-        ...nextScores[match.id],
-        officialHome: match.home_score ?? "",
-        officialAway: match.away_score ?? "",
-      };
-    });
+    setNotificationsEnabled(true);
 
-    setScores(nextScores);
-  }, [currentPlayerId, predictions, matches]);
-
-  async function handleAuthSubmit(e) {
-    e.preventDefault();
-    setAuthError("");
-    setAuthLoading(true);
-
-    try {
-      if (authMode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: authEmail,
-          password: authPassword,
-        });
-
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: authEmail,
-          password: authPassword,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          let avatarUrl = null;
-
-          if (authAvatarFile) {
-            avatarUrl = await uploadAvatar(authAvatarFile, data.user.id);
-          }
-
-          const { data: playerData, error: playerError } = await supabase
-            .from("players")
-            .insert({
-              name: authName.trim() || authEmail.split("@")[0],
-              avatar_url: avatarUrl,
-            })
-            .select("*")
-            .single();
-
-          if (playerError) throw playerError;
-
-          const { error: profileError } = await supabase.from("profiles").insert({
-            id: data.user.id,
-            player_id: playerData.id,
-            role: "player",
-          });
-
-          if (profileError) throw profileError;
-
-          setProfile({
-            id: data.user.id,
-            player_id: playerData.id,
-            role: "player",
-          });
-          setCurrentPlayer(playerData);
-          await refreshEverything(data.user.id);
-        }
-      }
-    } catch (error) {
-      setAuthError(error.message || "Erreur de connexion.");
-    } finally {
-      setAuthLoading(false);
-    }
+    alert("Notifications activées 👴🏻⚽");
   }
 
-  async function createMissingProfile(e) {
-    e.preventDefault();
-    if (!session?.user?.id) return;
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 
-    setCreatingProfile(true);
-    setAuthError("");
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
 
-    try {
-      let avatarUrl = null;
+    const rawData = window.atob(base64);
 
-      if (profileAvatarFile) {
-        avatarUrl = await uploadAvatar(profileAvatarFile, session.user.id);
-      }
-
-      const { data: playerData, error: playerError } = await supabase
-        .from("players")
-        .insert({
-          name: profileName.trim() || session.user.email?.split("@")[0] || "Joueur",
-          avatar_url: avatarUrl,
-        })
-        .select("*")
-        .single();
-
-      if (playerError) throw playerError;
-
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: session.user.id,
-        player_id: playerData.id,
-        role: "player",
-      });
-
-      if (profileError) throw profileError;
-
-      await refreshEverything(session.user.id);
-    } catch (error) {
-      setAuthError(error.message || "Erreur de création du profil.");
-    } finally {
-      setCreatingProfile(false);
-    }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
-  function formatDate(date) {
-    return new Date(date).toLocaleString("fr-FR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  }
-
-  function getPrediction(matchId) {
-    return predictions.find(
-      (p) => p.player_id === currentPlayerId && p.match_id === matchId
+    return Uint8Array.from(
+      [...rawData].map((char) => char.charCodeAt(0))
     );
   }
-
-  function getMatchPredictions(matchId) {
-    return predictions
-      .filter((prediction) => prediction.match_id === matchId)
-      .sort((a, b) =>
-        (a.players?.name || "").localeCompare(b.players?.name || "")
-      );
-  }
-
-  function calculatePredictionPoints(prediction, match) {
-    if (
-      match.home_score === null ||
-      match.away_score === null ||
-      match.home_score === undefined ||
-      match.away_score === undefined
-    ) {
-      return 0;
-    }
-
-    const ph = Number(prediction.predicted_home);
-    const pa = Number(prediction.predicted_away);
-    const rh = Number(match.home_score);
-    const ra = Number(match.away_score);
-
-    if (ph === rh && pa === ra) return 3;
-
-    const predictedDiff = ph - pa;
-    const realDiff = rh - ra;
-
-    if (predictedDiff === realDiff) return 2;
-
-    const predictedWinner =
-      predictedDiff > 0 ? "home" : predictedDiff < 0 ? "away" : "draw";
-
-    const realWinner = realDiff > 0 ? "home" : realDiff < 0 ? "away" : "draw";
-
-    if (predictedWinner === realWinner) return 1;
-
-    return 0;
-  }
-
-  async function savePrediction(match) {
-    if (!currentPlayerId) {
-      alert("Profil joueur introuvable.");
-      return;
-    }
-
-    if (isMatchLocked(match.match_date)) {
-      alert("Paris verrouillés.");
-      return;
-    }
-
-    const home = scores[match.id]?.home;
-    const away = scores[match.id]?.away;
-
-    if (home === "" || away === "" || home === undefined || away === undefined) {
-      alert("Entre les scores.");
-      return;
-    }
-
-    const existing = getPrediction(match.id);
-
-    if (existing) {
-      await supabase
-        .from("predictions")
-        .update({
-          predicted_home: Number(home),
-          predicted_away: Number(away),
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("predictions").insert({
-        player_id: currentPlayerId,
-        match_id: match.id,
-        predicted_home: Number(home),
-        predicted_away: Number(away),
-      });
-    }
-
-    await loadData();
-  }
-
-  async function saveOfficialScore(matchId) {
-    if (!isAdmin) {
-      alert("Accès admin requis.");
-      return;
-    }
-
-    const match = matches.find((m) => m.id === matchId);
-    const home = scores[matchId]?.officialHome;
-    const away = scores[matchId]?.officialAway;
-
-    const newHome = home === "" || home === undefined ? null : Number(home);
-    const newAway = away === "" || away === undefined ? null : Number(away);
-
-    await supabase
-      .from("matches")
-      .update({
-        home_score: newHome,
-        away_score: newAway,
-      })
-      .eq("id", matchId);
-
-    const updatedMatch = {
-      ...match,
-      home_score: newHome,
-      away_score: newAway,
-    };
-
-    const relatedPredictions = predictions.filter((p) => p.match_id === matchId);
-
-    for (const prediction of relatedPredictions) {
-      const points = calculatePredictionPoints(prediction, updatedMatch);
-
-      await supabase.from("predictions").update({ points }).eq("id", prediction.id);
-    }
-
-    await loadData();
-  }
-  async function addPlayer() {
-    if (!isAdmin) return;
-    if (!newPlayer.trim()) return;
-
-    await supabase.from("players").insert({
-      name: newPlayer.trim(),
-    });
-
-    setNewPlayer("");
-    await loadData();
-  }
-
-  function playerTotal(playerId) {
-    return predictions
-      .filter((p) => p.player_id === playerId)
-      .reduce((total, p) => total + (p.points || 0), 0);
-  }
-
-  if (authLoading) {
-    return (
-      <AppShell>
-        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
-          <div className="flex w-full max-w-xl flex-col items-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
-            <img
-              src="/logo.png"
-              alt="Logo"
-              className="mb-6 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30"
-            />
-
-            <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
-
-            <p className="mt-5 text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
-              Chargement
-            </p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl space-y-8 p-6">
-
-        <header className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#22123a]/70 p-8 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
-
-          <div className="absolute inset-0 -z-10">
-            <img
-              src="/stadium.jpg"
-              alt="Stade"
-              className="h-full w-full object-cover opacity-35"
-            />
-
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/25 via-[#22123a]/75 to-violet-900/85" />
-          </div>
-
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
-
-          <div className="flex flex-col items-center text-center">
-
-            <img
-              src="/logo.png"
-              alt="Logo Pronos Famille"
-              className="mb-5 h-28 w-28 rounded-3xl object-contain shadow-2xl ring-4 ring-emerald-300/40 md:h-36 md:w-36"
-            />
-
-            <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
-              Coupe du Monde 2026
-            </p>
-
-            <h1 className="mt-3 text-5xl font-black tracking-tight drop-shadow-2xl md:text-7xl">
-              Pronos Famille
-            </h1>
-
-            <div className="mt-5 flex items-center gap-3 rounded-2xl bg-black/25 px-4 py-3 ring-1 ring-white/10">
-
-              {currentPlayer?.avatar_url ? (
-                <img
-                  src={currentPlayer.avatar_url}
-                  alt={currentPlayer.name}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <UserCircle className="h-10 w-10 text-emerald-300" />
-              )}
-
-              <div className="text-left">
-                <p className="text-xs text-slate-300">
-                  Connecté en tant que
-                </p>
-
-                <p className="font-black">
-                  {currentPlayer?.name}
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 max-w-2xl text-lg text-slate-200">
-              Ton espace pronos sécurisé.
-            </p>
-
             <div className="mt-6 flex flex-wrap justify-center gap-3">
 
               <button
-                onClick={requestNotifications}
+                onClick={subscribeToPush}
                 className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-black text-white ring-1 ring-white/10"
               >
                 <Bell className="h-5 w-5" />
-                Notifications bientôt disponibles 👴🏻
+                Activer les notifications 👴🏻
               </button>
 
               <button
