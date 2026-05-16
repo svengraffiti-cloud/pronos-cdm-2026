@@ -1385,18 +1385,24 @@ export default function Home() {
         </section>
 
         <nav className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-3 shadow-xl backdrop-blur-md">
-          <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {["pronos", "classement", "groupes", "tableau", ...(isAdmin ? ["admin"] : [])].map((item) => (
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
+            {[
+              { key: "pronos", label: "Pronos" },
+              { key: "classement", label: "Classement" },
+              { key: "groupes", label: "Groupes" },
+              { key: "tableau", label: "Tableau" },
+              ...(isAdmin ? [{ key: "admin", label: "Admin" }] : []),
+            ].map((item) => (
               <button
-                key={item}
-                onClick={() => setTab(item)}
-                className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-black capitalize leading-none transition md:px-5 md:text-base ${
-                  tab === item
+                key={item.key}
+                onClick={() => setTab(item.key)}
+                className={`min-h-11 rounded-2xl px-2 py-3 text-center text-[12px] font-black leading-none transition sm:px-5 sm:text-base ${
+                  tab === item.key
                     ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
                     : "bg-white/5 text-slate-100 hover:bg-emerald-500/20"
                 }`}
               >
-                {item}
+                {item.label}
               </button>
             ))}
           </div>
