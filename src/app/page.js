@@ -198,6 +198,7 @@ export default function Home() {
   const [creatingProfile, setCreatingProfile] = useState(false);
 
   const [tab, setTab] = useState("pronos");
+  const [matchFilter, setMatchFilter] = useState("ALL");
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
@@ -215,6 +216,16 @@ export default function Home() {
     SF: "Demi-finales",
     FINAL: "Finale",
   };
+
+  const matchFilterOptions = [
+    { id: "ALL", label: "Tous" },
+    { id: "GROUP", label: "Groupes" },
+    { id: "R32", label: "16es" },
+    { id: "R16", label: "8es" },
+    { id: "QF", label: "Quarts" },
+    { id: "SF", label: "Demies" },
+    { id: "FINAL", label: "Finale" },
+  ];
 
   const isAdmin = profile?.role === "admin";
   const currentPlayerId = profile?.player_id;
@@ -235,6 +246,12 @@ export default function Home() {
         ),
     [matches]
   );
+
+  const filteredMatches = useMemo(() => {
+    if (matchFilter === "ALL") return matches;
+
+    return matches.filter((match) => match.stage === matchFilter);
+  }, [matches, matchFilter]);
 
   const predictionByPlayerAndMatch = useMemo(() => {
     const map = new Map();
@@ -1347,8 +1364,31 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-4 shadow-xl backdrop-blur-md">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {matchFilterOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setMatchFilter(option.id)}
+                        className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
+                          matchFilter === option.id
+                            ? "bg-emerald-500 text-[#07130d] shadow-lg shadow-emerald-950/30"
+                            : "bg-white/5 text-slate-100 ring-1 ring-white/10 hover:bg-emerald-500/20"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="mt-3 text-center text-sm font-bold text-slate-300">
+                    {filteredMatches.length} match{filteredMatches.length > 1 ? "s" : ""} affiché{filteredMatches.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+
                 <div className="grid gap-5 md:grid-cols-2">
-                  {matches.map((match) => (
+                  {filteredMatches.map((match) => (
                     <MatchCard
                       key={match.id}
                       match={match}
