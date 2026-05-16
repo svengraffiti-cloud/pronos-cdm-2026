@@ -57,6 +57,7 @@ export default function Home() {
   const [teams, setTeams] = useState([]);
   const [newPlayer, setNewPlayer] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [scores, setScores] = useState({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
@@ -228,26 +229,36 @@ export default function Home() {
     }
   }
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(options = {}) {
+    const silent = options.silent || false;
+
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
     try {
       const [playersResult, matchesResult, predictionsResult, teamsResult] =
         await Promise.all([
           supabase
             .from("players")
-            .select("*")
+            .select("id, name, avatar_url, created_at")
             .order("created_at", { ascending: true }),
           supabase
             .from("matches")
-            .select("*")
+            .select(
+              "id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score"
+            )
             .order("match_date", { ascending: true }),
           supabase
             .from("predictions")
-            .select("*, players:player_id(id, name, avatar_url)"),
+            .select(
+              "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+            ),
           supabase
             .from("teams")
-            .select("*")
+            .select("id, name, group_name")
             .order("group_name", { ascending: true }),
         ]);
 
@@ -255,14 +266,22 @@ export default function Home() {
       setMatches(matchesResult.data || []);
       setPredictions(predictionsResult.data || []);
       setTeams(teamsResult.data || []);
+    } catch (error) {
+      console.error("Erreur chargement données:", error);
     } finally {
-      setLoading(false);
+      if (silent) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
-  async function refreshEverything(userId = session?.user?.id) {
+  async function refreshEverything(userId = session?.user?.id, options = {}) {
     if (!userId) return;
-    await Promise.all([loadProfile(userId), loadData()]);
+
+    await loadProfile(userId);
+    await loadData(options);
   }
 
   useEffect(() => {
@@ -350,7 +369,7 @@ export default function Home() {
           table: "predictions",
         },
         async () => {
-          await loadData();
+          await loadData({ silent: true });
         }
       )
       .subscribe();
@@ -589,7 +608,7 @@ export default function Home() {
       });
     }
 
-    await loadData();
+    await loadData({ silent: true });
   }
 
   async function saveOfficialScore(matchId) {
@@ -627,7 +646,7 @@ export default function Home() {
       await supabase.from("predictions").update({ points }).eq("id", prediction.id);
     }
 
-    await loadData();
+    await loadData({ silent: true });
   }
 
   async function addPlayer() {
@@ -639,7 +658,7 @@ export default function Home() {
     });
 
     setNewPlayer("");
-    await loadData();
+    await loadData({ silent: true });
   }
 
   function playerTotal(playerId) {
@@ -1054,6 +1073,12 @@ export default function Home() {
           ))}
         </nav>
 
+        {refreshing && !loading && (
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-center text-sm font-black text-emerald-200 shadow-xl backdrop-blur-md">
+            Mise à jour en cours...
+          </div>
+        )}
+
         {loading ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
             <img
@@ -1066,7 +1091,7 @@ export default function Home() {
               Chargement
             </p>
             <p className="mt-2 text-slate-300">
-              Préparation des pronos, scores et classements...
+              Chargement initial des données...
             </p>
           </div>
         ) : (
