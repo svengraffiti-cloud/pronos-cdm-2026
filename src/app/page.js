@@ -44,9 +44,6 @@ function AppLogo({ className = "", alt = "Logo Pronos Famille" }) {
       loading="eager"
       decoding="async"
       draggable={false}
-      onError={(event) => {
-        event.currentTarget.src = "/icon-512.png";
-      }}
     />
   );
 }
@@ -444,7 +441,7 @@ export default function Home() {
     if (Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "/logo.png",
+        icon: "/logo-app.png",
       });
     }
   }
