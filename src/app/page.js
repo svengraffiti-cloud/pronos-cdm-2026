@@ -1384,20 +1384,22 @@ export default function Home() {
           </div>
         </section>
 
-        <nav className="flex flex-wrap justify-center gap-3 rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-4 shadow-xl backdrop-blur-md">
-          {["pronos", "classement", "groupes", "tableau", ...(isAdmin ? ["admin"] : [])].map((item) => (
-            <button
-              key={item}
-              onClick={() => setTab(item)}
-              className={`rounded-2xl px-5 py-3 font-black capitalize transition ${
-                tab === item
-                  ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
-                  : "bg-white/5 text-slate-100 hover:bg-emerald-500/20"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
+        <nav className="overflow-x-auto rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-3 shadow-xl backdrop-blur-md md:p-4">
+          <div className="flex min-w-max items-center justify-start gap-2 md:min-w-0 md:flex-wrap md:justify-center md:gap-3">
+            {["pronos", "classement", "groupes", "tableau", ...(isAdmin ? ["admin"] : [])].map((item) => (
+              <button
+                key={item}
+                onClick={() => setTab(item)}
+                className={`whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-black capitalize transition md:px-5 md:py-3 md:text-base ${
+                  tab === item
+                    ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
+                    : "bg-white/5 text-slate-100 hover:bg-emerald-500/20"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </nav>
 
         {refreshing && !loading && (
