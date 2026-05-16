@@ -1,23 +1,6 @@
-const CACHE_NAME = "pronos-cdm-2026-cache-v2";
-
-const STATIC_ASSETS = [
-  "/",
-  "/logo.png",
-  "/stadium.jpg",
-];
+const CACHE_NAME = "pronos-cdm-2026-cache-v999";
 
 self.addEventListener("install", function (event) {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then(function (cache) {
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .catch(function (error) {
-        console.error("Erreur cache install:", error);
-      })
-  );
-
   self.skipWaiting();
 });
 
@@ -25,66 +8,13 @@ self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches
       .keys()
-      .then(function (cacheNames) {
-        return Promise.all(
-          cacheNames.map(function (cacheName) {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-
-            return null;
-          })
-        );
-      })
-      .then(function () {
-        return self.clients.claim();
-      })
+      .then((cacheNames) => Promise.all(cacheNames.map((name) => caches.delete(name))))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", function (event) {
-  if (event.request.method !== "GET") return;
-
-  const requestUrl = new URL(event.request.url);
-
-  if (
-    requestUrl.pathname.startsWith("/api/") ||
-    requestUrl.hostname.includes("supabase.co")
-  ) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  if (
-    event.request.destination === "image" ||
-    event.request.destination === "script" ||
-    event.request.destination === "style" ||
-    event.request.destination === "font" ||
-    requestUrl.pathname === "/" ||
-    requestUrl.pathname.startsWith("/_next/")
-  ) {
-    event.respondWith(
-      caches.match(event.request).then(function (cachedResponse) {
-        const networkFetch = fetch(event.request)
-          .then(function (networkResponse) {
-            if (networkResponse && networkResponse.status === 200) {
-              const responseClone = networkResponse.clone();
-
-              caches.open(CACHE_NAME).then(function (cache) {
-                cache.put(event.request, responseClone);
-              });
-            }
-
-            return networkResponse;
-          })
-          .catch(function () {
-            return cachedResponse;
-          });
-
-        return cachedResponse || networkFetch;
-      })
-    );
-  }
+  event.respondWith(fetch(event.request));
 });
 
 self.addEventListener("push", function (event) {
@@ -104,8 +34,8 @@ self.addEventListener("push", function (event) {
 
   const options = {
     body: data.body || "Nouvelle notification.",
-    icon: "/logo.png",
-    badge: "/logo.png",
+    icon: "/logo-app.png?v=999",
+    badge: "/logo-app.png?v=999",
     data: {
       url: data.url || "/",
     },
