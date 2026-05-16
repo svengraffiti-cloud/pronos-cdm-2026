@@ -38,7 +38,7 @@ function AppShell({ children }) {
 function AppLogo({ className = "", alt = "Logo Pronos Famille" }) {
   return (
     <img
-      src="/logo-v2.png"
+      src="/logo-app.png"
       alt={alt}
       className={className}
       loading="eager"
