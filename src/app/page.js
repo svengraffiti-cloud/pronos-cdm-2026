@@ -903,9 +903,7 @@ export default function Home() {
     const rh = Number(match.home_score);
     const ra = Number(match.away_score);
 
-    let points = 0;
-
-    // Score exact
+    // Score exact = 3 points
     if (ph === rh && pa === ra) {
       return 3;
     }
@@ -919,7 +917,9 @@ export default function Home() {
     const realResult =
       realDiff > 0 ? "home" : realDiff < 0 ? "away" : "draw";
 
-    // Bon résultat
+    let points = 0;
+
+    // Bon résultat : victoire domicile / nul / victoire extérieur
     if (predictedResult === realResult) {
       points += 1;
     }
@@ -930,28 +930,6 @@ export default function Home() {
     }
 
     return points;
-  }
-
-    const ph = Number(prediction.predicted_home);
-    const pa = Number(prediction.predicted_away);
-    const rh = Number(match.home_score);
-    const ra = Number(match.away_score);
-
-    if (ph === rh && pa === ra) return 3;
-
-    const predictedDiff = ph - pa;
-    const realDiff = rh - ra;
-
-    if (predictedDiff === realDiff) return 2;
-
-    const predictedWinner =
-      predictedDiff > 0 ? "home" : predictedDiff < 0 ? "away" : "draw";
-
-    const realWinner = realDiff > 0 ? "home" : realDiff < 0 ? "away" : "draw";
-
-    if (predictedWinner === realWinner) return 1;
-
-    return 0;
   }
 
   const handlePredictionScoreChange = useCallback((matchId, side, value) => {
