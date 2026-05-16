@@ -1384,13 +1384,13 @@ export default function Home() {
           </div>
         </section>
 
-        <nav className="overflow-x-auto rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-3 shadow-xl backdrop-blur-md md:p-4">
-          <div className="flex min-w-max items-center justify-start gap-2 md:min-w-0 md:flex-wrap md:justify-center md:gap-3">
+        <nav className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-3 shadow-xl backdrop-blur-md">
+          <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {["pronos", "classement", "groupes", "tableau", ...(isAdmin ? ["admin"] : [])].map((item) => (
               <button
                 key={item}
                 onClick={() => setTab(item)}
-                className={`whitespace-nowrap rounded-2xl px-3 py-2 text-sm font-black capitalize transition md:px-5 md:py-3 md:text-base ${
+                className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-black capitalize leading-none transition md:px-5 md:text-base ${
                   tab === item
                     ? "bg-violet-600 text-white shadow-lg shadow-violet-950/40"
                     : "bg-white/5 text-slate-100 hover:bg-emerald-500/20"
