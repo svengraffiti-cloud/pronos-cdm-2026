@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346560565198",
+    "project_id": "les-pronos-de-papy",
+    "storage_bucket": "les-pronos-de-papy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346560565198:android:2c72b2ac89a8213cb3e59f",
+        "android_client_info": {
+          "package_name": "com.lespronosdepapy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByR--_F38PcHeJLcCFvhFEq8hIUX4JnqM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

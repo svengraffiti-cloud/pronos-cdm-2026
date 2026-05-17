@@ -1,18 +1,28 @@
+<<<<<<< HEAD
 const CACHE_NAME = "pronos-cdm-2026-cache-v999";
 
 self.addEventListener("install", function (event) {
+=======
+self.addEventListener("install", (event) => {
+>>>>>>> 576ffa1 (Ajout bouton rafraichir app)
   self.skipWaiting();
 });
 
-self.addEventListener("activate", function (event) {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
+<<<<<<< HEAD
     caches
       .keys()
       .then((cacheNames) => Promise.all(cacheNames.map((name) => caches.delete(name))))
       .then(() => self.clients.claim())
+=======
+    caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name))))
+>>>>>>> 576ffa1 (Ajout bouton rafraichir app)
   );
+  self.clients.claim();
 });
 
+<<<<<<< HEAD
 self.addEventListener("fetch", function (event) {
   event.respondWith(fetch(event.request));
 });
@@ -69,4 +79,8 @@ self.addEventListener("notificationclick", function (event) {
       return null;
     })
   );
+=======
+self.addEventListener("fetch", (event) => {
+  event.respondWith(fetch(event.request));
+>>>>>>> 576ffa1 (Ajout bouton rafraichir app)
 });
