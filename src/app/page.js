@@ -116,7 +116,7 @@ const MatchCard = memo(function MatchCard({
 
   return (
     <div
-      className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
+      className={`relative overflow-visible rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
         finished
           ? "border-slate-700 bg-slate-950/70 opacity-90"
           : "border-white/15 bg-[#12091f]/75"
@@ -144,7 +144,7 @@ const MatchCard = memo(function MatchCard({
         </div>
 
         <details
-          className="relative shrink-0"
+          className="relative shrink-0 overflow-visible"
           onToggle={(event) => {
             if (event.currentTarget.open) {
               loadMatchTrend();
@@ -155,7 +155,7 @@ const MatchCard = memo(function MatchCard({
             🍀
           </summary>
 
-          <div className="absolute right-0 z-50 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
+          <div className="absolute right-0 top-14 z-50 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
             <h4 className="mb-4 text-lg font-black text-emerald-300">
               Cotes du match
             </h4>
