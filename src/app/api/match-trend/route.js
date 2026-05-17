@@ -54,6 +54,175 @@ async function apiFootballFetch(path) {
   return data;
 }
 
+function findMatchWinnerBet(oddsResponse) {
+  const bookmakers = oddsResponse?.bookmakers || [];
+
+  for (const bookmaker of bookmakers) {
+    const bet = bookmaker.bets?.find(
+      (item) =>
+        item.name === "Match Winner" ||
+        item.name === "Winner" ||
+        item.name === "1x2"
+    );
+
+    if (bet?.values?.length) {
+      return {
+        bookmaker: bookmaker.name,
+        values: bet.values,
+      };
+    }
+  }
+
+  return null;
+}
+
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+
+    const home = searchParams.get("home") || "";
+    const away = searchParams.get("away") || "";
+    const rawDate = searchParams.get("date") || "";
+
+    if (!home || !away || !rawDate) {
+      return NextResponse.json(
+        { ok: false, error: "Match incomplet." },
+        { status: 400 }
+      );
+    }
+
+    const date = new Date(rawDate).toISOString().slice(0, 10);
+
+    const fixturesResult = await apiFootballFetch(`/fixtures?date=${date}`);
+    const fixtures = fixturesResult?.response || [];
+
+    if (!fixtures.length) {
+      return NextResponse.json(
+        { ok: false, error: "Aucun match trouvé dans l'API pour cette date." },
+        { status: 404 }
+      );
+    }
+
+    const bestFixture = fixtures
+      .map((fixture) => ({
+        fixture,
+        score: matchScore(
+          fixture?.teams?.home?.name,
+          fixture?.teams?.away?.name,
+          home,
+          away
+        ),
+      }))
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (!bestFixture || bestFixture.score < 6) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Impossible d'associer ce match aux données API-Football.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const fixtureId = bestFixture.fixture.fixture.id;
+
+    const oddsResult = await apiFootballFetch(`/odds?fixture=${fixtureId}`);
+    const oddsItem = oddsResult?.response?.[0];
+
+    if (!oddsItem) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Cotes indisponibles pour ce match.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const matchWinnerBet = findMatchWinnerBet(oddsItem);
+
+    if (!matchWinnerBet) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Cotes 1/N/2 indisponibles pour ce match.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const homeOdd =
+      matchWinnerBet.values.find((item) => item.value === "Home")?.odd ||
+      matchWinnerBet.values.find((item) => item.value === "1")?.odd ||
+      null;
+
+    const drawOdd =
+      matchWinnerBet.values.find((item) => item.value === "Draw")?.odd ||
+      matchWinnerBet.values.find((item) => item.value === "X")?.odd ||
+      null;
+
+    const awayOdd =
+      matchWinnerBet.values.find((item) => item.value === "Away")?.odd ||
+      matchWinnerBet.values.find((item) => item.value === "2")?.odd ||
+      null;
+
+    if (!homeOdd && !drawOdd && !awayOdd) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Cotes 1/N/2 introuvables.",
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      type: "odds",
+      fixtureId,
+      sourceFixture: `${bestFixture.fixture.teams.home.name} - ${bestFixture.fixture.teams.away.name}`,
+      bookmaker: matchWinnerBet.bookmaker,
+      odds: {
+        home: homeOdd,
+        draw: drawOdd,
+        away: awayOdd,
+      },
+      percent: null,
+      favorite: null,
+      advice: null,
+    });
+  } catch (error) {
+    console.error("Erreur match-trend:", error);
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || "Erreur serveur.",
+      },
+      { status: 500 }
+    );
+  }
+}
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      "x-apisports-key": apiKey,
+    },
+    next: {
+      revalidate: 1800,
+    },
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Erreur API-Football.");
+  }
+
+  return data;
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
