@@ -604,6 +604,63 @@ export default function Home() {
     try {
       if (typeof window === "undefined") return;
 
+      let isNativeApp = false;
+
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        isNativeApp = Capacitor.isNativePlatform();
+      } catch (error) {
+        isNativeApp = false;
+      }
+
+      if (isNativeApp) {
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+
+        const permission = await PushNotifications.requestPermissions();
+
+        if (permission.receive !== "granted") {
+          setNotificationsEnabled(false);
+          alert("Notifications refusées.");
+          return;
+        }
+
+        PushNotifications.removeAllListeners();
+
+        PushNotifications.addListener("registration", async (token) => {
+          try {
+            console.log("Token push natif:", token.value);
+
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem("push_token", token.value);
+            }
+
+            setNotificationsEnabled(true);
+            alert("Notifications activées 👴🏻");
+          } catch (error) {
+            console.error("Erreur sauvegarde token push:", error);
+            setNotificationsEnabled(true);
+            alert("Notifications activées 👴🏻");
+          }
+        });
+
+        PushNotifications.addListener("registrationError", (error) => {
+          console.error("Erreur inscription push:", error);
+          setNotificationsEnabled(false);
+          alert("Erreur activation notifications.");
+        });
+
+        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          console.log("Notification reçue:", notification);
+        });
+
+        PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
+          console.log("Notification ouverte:", notification);
+        });
+
+        await PushNotifications.register();
+        return;
+      }
+
       if (!("Notification" in window)) {
         setNotificationsEnabled(false);
         alert("Notifications non supportées sur ce navigateur.");
@@ -766,6 +823,29 @@ export default function Home() {
     async function checkNotifications() {
       try {
         if (typeof window === "undefined") return;
+
+        let isNativeApp = false;
+
+        try {
+          const { Capacitor } = await import("@capacitor/core");
+          isNativeApp = Capacitor.isNativePlatform();
+        } catch (error) {
+          isNativeApp = false;
+        }
+
+        if (isNativeApp) {
+          try {
+            const { PushNotifications } = await import("@capacitor/push-notifications");
+            const permission = await PushNotifications.checkPermissions();
+
+            setNotificationsEnabled(permission.receive === "granted");
+            return;
+          } catch (error) {
+            console.error(error);
+            setNotificationsEnabled(false);
+            return;
+          }
+        }
 
         if (!("Notification" in window)) {
           setNotificationsEnabled(false);
