@@ -61,6 +61,27 @@ const MatchCard = memo(function MatchCard({
   onScoreChange,
   onSavePrediction,
 }) {
+  const editCount = prediction?.edit_count || 0;
+  const hasPrediction = Boolean(prediction);
+  const noModificationLeft = hasPrediction && editCount >= 1;
+  const predictionBlocked = locked || noModificationLeft;
+
+  const buttonLabel = locked
+    ? "Paris fermé"
+    : noModificationLeft
+    ? "Modification utilisée"
+    : hasPrediction
+    ? "Modifier"
+    : "Valider";
+
+  const buttonClassName = locked
+    ? "rounded-2xl bg-slate-600 px-5 py-4 font-black text-slate-300 opacity-60"
+    : noModificationLeft
+    ? "rounded-2xl bg-slate-600 px-5 py-4 font-black text-slate-300 opacity-60"
+    : hasPrediction
+    ? "rounded-2xl bg-orange-500 px-5 py-4 font-black text-white shadow-lg shadow-orange-950/40"
+    : "rounded-2xl bg-violet-600 px-5 py-4 font-black text-white shadow-lg shadow-violet-950/40";
+
   return (
     <div
       className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
@@ -88,12 +109,12 @@ const MatchCard = memo(function MatchCard({
       <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
 
       <p className={`mt-2 font-black ${locked ? "text-red-400" : "text-emerald-400"}`}>
-        {locked ? "🔒 Paris verrouillés" : "🟢 Paris ouverts"}
+        {locked ? "🔒 Paris fermé" : "🟢 Paris ouvert"}
       </p>
 
       {!locked && (
         <p className="mt-1 text-xs font-bold text-slate-400">
-          Verrouillage 1h30 avant le match.
+          Verrouillage définitif 30 min avant le match.
         </p>
       )}
 
@@ -115,9 +136,23 @@ const MatchCard = memo(function MatchCard({
         </div>
       )}
 
+      {hasPrediction && !finished && (
+        <p
+          className={`mt-2 text-xs font-bold ${
+            predictionBlocked ? "text-red-300" : "text-orange-300"
+          }`}
+        >
+          {locked
+            ? "Paris fermé définitivement."
+            : noModificationLeft
+            ? "Tu as déjà utilisé ta seule modification possible."
+            : "Il te reste une seule modification possible jusqu’à 30 min avant le début du match."}
+        </p>
+      )}
+
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <input
-          disabled={locked}
+          disabled={predictionBlocked}
           type="number"
           min="0"
           value={localScore.home ?? ""}
@@ -128,7 +163,7 @@ const MatchCard = memo(function MatchCard({
         <span className="text-2xl font-black">-</span>
 
         <input
-          disabled={locked}
+          disabled={predictionBlocked}
           type="number"
           min="0"
           value={localScore.away ?? ""}
@@ -138,10 +173,10 @@ const MatchCard = memo(function MatchCard({
 
         <button
           onClick={() => onSavePrediction(match, localScore)}
-          disabled={locked}
-          className="rounded-2xl bg-violet-600 px-5 py-4 font-black disabled:opacity-40"
+          disabled={predictionBlocked}
+          className={buttonClassName}
         >
-          Valider
+          {buttonLabel}
         </button>
       </div>
 
@@ -426,7 +461,7 @@ export default function Home() {
   }, [groupNames, groupStandingsByName]);
 
   const isMatchLocked = (matchDate) => {
-    const lockTime = new Date(matchDate).getTime() - 90 * 60 * 1000;
+    const lockTime = new Date(matchDate).getTime() - 30 * 60 * 1000;
     return Date.now() >= lockTime;
   };
 
@@ -577,7 +612,7 @@ export default function Home() {
           supabase
             .from("predictions")
             .select(
-              "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+              "id, player_id, match_id, predicted_home, predicted_away, points, edit_count, players:player_id(id, name, avatar_url)"
             ),
           supabase
             .from("teams")
@@ -951,7 +986,14 @@ export default function Home() {
       }
 
       if (isMatchLocked(match.match_date)) {
-        alert("Paris verrouillés 1h30 avant le coup d'envoi.");
+        alert("Paris fermés définitivement 30 min avant le coup d'envoi.");
+        return;
+      }
+
+      const existing = predictionByPlayerAndMatch.get(`${currentPlayerId}-${match.id}`);
+
+      if (existing && (existing.edit_count || 0) >= 1) {
+        alert("Tu as déjà utilisé ta seule modification possible pour ce match.");
         return;
       }
 
@@ -963,14 +1005,13 @@ export default function Home() {
         return;
       }
 
-      const existing = predictionByPlayerAndMatch.get(`${currentPlayerId}-${match.id}`);
-
       if (existing) {
         await supabase
           .from("predictions")
           .update({
             predicted_home: Number(home),
             predicted_away: Number(away),
+            edit_count: (existing.edit_count || 0) + 1,
           })
           .eq("id", existing.id);
       } else {
@@ -979,13 +1020,14 @@ export default function Home() {
           match_id: match.id,
           predicted_home: Number(home),
           predicted_away: Number(away),
+          edit_count: 0,
         });
       }
 
       const { data: refreshedPrediction, error } = await supabase
         .from("predictions")
         .select(
-          "id, player_id, match_id, predicted_home, predicted_away, points, players:player_id(id, name, avatar_url)"
+          "id, player_id, match_id, predicted_home, predicted_away, points, edit_count, players:player_id(id, name, avatar_url)"
         )
         .eq("player_id", currentPlayerId)
         .eq("match_id", match.id)
@@ -1443,7 +1485,7 @@ export default function Home() {
                     <div>
                       <h2 className="text-2xl font-black">Ta feuille de pronostic</h2>
                       <p className="text-sm text-slate-300">
-                        Tu ne peux remplir que tes propres pronos. Les paris se verrouillent 1h30 avant le coup d’envoi.
+                        Tu ne peux remplir que tes propres pronos. Tu as une seule modification possible, puis les paris se verrouillent définitivement 30 min avant le coup d’envoi.
                       </p>
                     </div>
                   </div>
