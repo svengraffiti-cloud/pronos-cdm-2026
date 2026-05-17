@@ -157,7 +157,7 @@ const MatchCard = memo(function MatchCard({
 
           <div className="absolute right-0 z-50 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
             <h4 className="mb-4 text-lg font-black text-emerald-300">
-              Tendance du match
+              Cotes du match
             </h4>
 
             {trendLoading && (
@@ -177,38 +177,42 @@ const MatchCard = memo(function MatchCard({
               <>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">{match.home_team}</span>
-                    <strong>{trendData.percent?.home || "-"}</strong>
+                    <span className="font-bold">1 — {match.home_team}</span>
+                    <strong className="text-emerald-300">
+                      {trendData.odds?.home || "Indispo"}
+                    </strong>
                   </div>
 
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">Match nul</span>
-                    <strong>{trendData.percent?.draw || "-"}</strong>
+                    <span className="font-bold">N — Match nul</span>
+                    <strong className="text-emerald-300">
+                      {trendData.odds?.draw || "Indispo"}
+                    </strong>
                   </div>
 
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">{match.away_team}</span>
-                    <strong>{trendData.percent?.away || "-"}</strong>
+                    <span className="font-bold">2 — {match.away_team}</span>
+                    <strong className="text-emerald-300">
+                      {trendData.odds?.away || "Indispo"}
+                    </strong>
                   </div>
                 </div>
 
                 <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
-                  <p className="text-sm text-emerald-200">🔥 Favori</p>
+                  <p className="text-sm text-emerald-200">🏦 Bookmaker</p>
 
                   <p className="mt-1 text-lg font-black text-white">
-                    {trendData.favorite || "Indisponible"}
+                    {trendData.bookmaker || "Bookmaker indisponible"}
                   </p>
 
-                  {trendData.advice && (
-                    <p className="mt-2 text-sm font-bold text-slate-300">
-                      {trendData.advice}
-                    </p>
-                  )}
+                  <p className="mt-2 text-sm font-bold text-slate-300">
+                    Cotes 1/N/2 réelles récupérées via API-Football.
+                  </p>
                 </div>
 
                 {trendData.sourceFixture && (
                   <p className="mt-4 text-xs font-bold text-slate-400">
-                    Source API-Football : {trendData.sourceFixture}
+                    Match API : {trendData.sourceFixture}
                   </p>
                 )}
               </>
@@ -584,82 +588,32 @@ export default function Home() {
     return match.home_score !== null && match.away_score !== null;
   };
 
-  function sendLocalNotification(title, body) {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
 
-    if (Notification.permission === "granted") {
-      new Notification(title, {
-        body,
-        icon: "/logo-app.png",
-      });
-    }
-  }
-
-  function urlBase64ToUint8Array(base64String) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; i += 1) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-
-    return outputArray;
-  }
 
   async function requestNotifications() {
     try {
-      const { PushNotifications } = await import("@capacitor/push-notifications");
+      if (typeof window === "undefined") return;
 
-      const permission = await PushNotifications.requestPermissions();
+      if (!("Notification" in window)) {
+        setNotificationsEnabled(false);
+        alert("Notifications non supportées sur ce navigateur.");
+        return;
+      }
 
-      if (permission.receive !== "granted") {
+      const permission = await Notification.requestPermission();
+
+      if (permission !== "granted") {
         setNotificationsEnabled(false);
         alert("Notifications refusées.");
         return;
       }
 
-      await PushNotifications.register();
-
-      PushNotifications.addListener("registration", async (token) => {
-        console.log("Token push:", token.value);
-
-        setNotificationsEnabled(true);
-
-        const response = await fetch("/api/save-subscription", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: token.value,
-            user_id: session?.user?.id || null,
-            player_id: currentPlayerId || null,
-            platform: "ios",
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Impossible d'enregistrer le token push.");
-        }
-
-        alert("Notifications activées 👴🏻");
-      });
-
-      PushNotifications.addListener("registrationError", (error) => {
-        console.error("Erreur push:", error);
-        setNotificationsEnabled(false);
-        alert("Erreur activation notifications.");
-      });
+      setNotificationsEnabled(true);
+      alert("Notifications activées 👴🏻");
     } catch (error) {
       console.error(error);
       setNotificationsEnabled(false);
-      alert("Notifications non supportées sur cette version.");
+      alert("Erreur activation notifications.");
     }
   }
 
