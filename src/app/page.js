@@ -157,7 +157,7 @@ const MatchCard = memo(function MatchCard({
 
           <div className="absolute right-0 z-50 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
             <h4 className="mb-4 text-lg font-black text-emerald-300">
-              Cotes du match
+              Tendance du match
             </h4>
 
             {trendLoading && (
@@ -177,18 +177,18 @@ const MatchCard = memo(function MatchCard({
               <>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">1 — {match.home_team}</span>
-                    <strong>{trendData.odds?.home || "Indispo"}</strong>
+                    <span className="font-bold">{match.home_team}</span>
+                    <strong>{trendData.percent?.home || "-"}</strong>
                   </div>
 
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">N — Match nul</span>
-                    <strong>{trendData.odds?.draw || "Indispo"}</strong>
+                    <span className="font-bold">Match nul</span>
+                    <strong>{trendData.percent?.draw || "-"}</strong>
                   </div>
 
                   <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">2 — {match.away_team}</span>
-                    <strong>{trendData.odds?.away || "Indispo"}</strong>
+                    <span className="font-bold">{match.away_team}</span>
+                    <strong>{trendData.percent?.away || "-"}</strong>
                   </div>
                 </div>
 
@@ -727,7 +727,7 @@ export default function Home() {
           supabase
             .from("predictions")
             .select(
-              "id, player_id, match_id, predicted_home, predicted_away, points, edit_count, players:player_id(id, name, avatar_url)"
+              "id, player_id, match_id, predicted_home, predicted_away, points, edit_count"
             ),
           supabase
             .from("teams")
@@ -753,8 +753,10 @@ export default function Home() {
   async function refreshEverything(userId = session?.user?.id, options = {}) {
     if (!userId) return;
 
-    await loadProfile(userId);
-    await loadData(options);
+    await Promise.all([
+      loadProfile(userId),
+      loadData(options),
+    ]);
   }
 
   useEffect(() => {
@@ -1142,7 +1144,7 @@ export default function Home() {
       const { data: refreshedPrediction, error } = await supabase
         .from("predictions")
         .select(
-          "id, player_id, match_id, predicted_home, predicted_away, points, edit_count, players:player_id(id, name, avatar_url)"
+          "id, player_id, match_id, predicted_home, predicted_away, points, edit_count"
         )
         .eq("player_id", currentPlayerId)
         .eq("match_id", match.id)
