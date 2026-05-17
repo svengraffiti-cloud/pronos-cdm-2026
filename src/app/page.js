@@ -747,12 +747,13 @@ export default function Home() {
           body: JSON.stringify({
             code: inviteAccessCode,
           }),
+        // Code famille : PAPY2026
         });
 
         const inviteResult = await inviteResponse.json().catch(() => null);
 
         if (!inviteResponse.ok || !inviteResult?.valid) {
-          setAuthError(inviteResult?.error || "Code d’accès famille incorrect.");
+          setAuthError(inviteResult?.error || "Code d’accès famille (PAPY2026) incorrect.");
           return;
         }
 
