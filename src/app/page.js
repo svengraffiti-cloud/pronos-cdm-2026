@@ -1464,6 +1464,17 @@ export default function Home() {
               </button>
 
               <button
+                onClick={() => refreshEverything(session?.user?.id, { silent: true })}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500/20 px-5 py-3 font-black text-white ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30 disabled:opacity-60"
+              >
+                <span className={refreshing ? "inline-block animate-spin" : ""}>
+                  🔄
+                </span>
+                {refreshing ? "Rafraîchissement..." : "Rafraîchir"}
+              </button>
+
+              <button
                 onClick={signOut}
                 className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-black text-white ring-1 ring-white/10"
               >
