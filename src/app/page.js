@@ -143,88 +143,98 @@ const MatchCard = memo(function MatchCard({
           <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
         </div>
 
-        <details
-          className="relative shrink-0 overflow-visible"
-          onToggle={(event) => {
-            if (event.currentTarget.open) {
-              loadMatchTrend();
-            }
-          }}
-        >
-          <summary className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl shadow-lg ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30">
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={loadMatchTrend}
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl shadow-lg ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30"
+          >
             🍀
-          </summary>
+          </button>
 
-          <div className="absolute right-0 top-14 z-50 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
-            <h4 className="mb-4 text-lg font-black text-emerald-300">
-              Cotes du match
-            </h4>
+          {(trendLoading || trendError || trendData) && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm">
+              <div className="relative max-h-[86vh] w-full max-w-md overflow-y-auto rounded-[2rem] border border-white/10 bg-[#12091f] p-6 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrendData(null);
+                    setTrendError("");
+                  }}
+                  className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-2xl font-black text-slate-300 hover:bg-white/20 hover:text-white"
+                >
+                  ×
+                </button>
 
-            {trendLoading && (
-              <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-300">
-                <Loader2 className="h-5 w-5 animate-spin text-emerald-300" />
-                Chargement des vraies tendances...
-              </div>
-            )}
+                <h4 className="mb-6 pr-10 text-2xl font-black text-emerald-300">
+                  🍀 Cotes du match
+                </h4>
 
-            {!trendLoading && trendError && (
-              <div className="rounded-2xl bg-red-500/10 p-4 text-sm font-bold text-red-200 ring-1 ring-red-300/10">
-                {trendError}
-              </div>
-            )}
-
-            {!trendLoading && trendData && (
-              <>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">1 — {match.home_team}</span>
-                    <strong className="text-emerald-300">
-                      {trendData.odds?.home || "Indispo"}
-                    </strong>
+                {trendLoading && (
+                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-300">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-300" />
+                    Chargement des vraies cotes...
                   </div>
-
-                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">N — Match nul</span>
-                    <strong className="text-emerald-300">
-                      {trendData.odds?.draw || "Indispo"}
-                    </strong>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                    <span className="font-bold">2 — {match.away_team}</span>
-                    <strong className="text-emerald-300">
-                      {trendData.odds?.away || "Indispo"}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
-                  <p className="text-sm text-emerald-200">🏦 Bookmaker</p>
-
-                  <p className="mt-1 text-lg font-black text-white">
-                    {trendData.bookmaker || "Bookmaker indisponible"}
-                  </p>
-
-                  <p className="mt-2 text-sm font-bold text-slate-300">
-                    Cotes 1/N/2 réelles récupérées via API-Football.
-                  </p>
-                </div>
-
-                {trendData.sourceFixture && (
-                  <p className="mt-4 text-xs font-bold text-slate-400">
-                    Match API : {trendData.sourceFixture}
-                  </p>
                 )}
-              </>
-            )}
 
-            {!trendLoading && !trendData && !trendError && (
-              <p className="rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-300">
-                Clique sur 🍀 pour charger la tendance.
-              </p>
-            )}
-          </div>
-        </details>
+                {!trendLoading && trendError && (
+                  <div className="rounded-2xl bg-red-500/10 p-4 text-sm font-bold text-red-200 ring-1 ring-red-300/10">
+                    {trendError}
+                  </div>
+                )}
+
+                {!trendLoading && trendData && (
+                  <>
+                    <div className="space-y-4 text-sm">
+                      <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
+                        <span className="text-base font-black text-white">
+                          1 — {match.home_team}
+                        </span>
+                        <strong className="shrink-0 text-xl text-emerald-300">
+                          {trendData.odds?.home || "Indispo"}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
+                        <span className="text-base font-black text-white">
+                          N — Match nul
+                        </span>
+                        <strong className="shrink-0 text-xl text-emerald-300">
+                          {trendData.odds?.draw || "Indispo"}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
+                        <span className="text-base font-black text-white">
+                          2 — {match.away_team}
+                        </span>
+                        <strong className="shrink-0 text-xl text-emerald-300">
+                          {trendData.odds?.away || "Indispo"}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
+                      <p className="text-sm text-emerald-200">🏦 Bookmaker</p>
+                      <p className="mt-1 text-lg font-black text-white">
+                        {trendData.bookmaker || "Bookmaker indisponible"}
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-slate-300">
+                        Cotes 1/N/2 réelles récupérées via API-Football.
+                      </p>
+                    </div>
+
+                    {trendData.sourceFixture && (
+                      <p className="mt-4 text-xs font-bold text-slate-400">
+                        Match API : {trendData.sourceFixture}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <p className={`mt-2 font-black ${locked ? "text-red-400" : "text-emerald-400"}`}>
