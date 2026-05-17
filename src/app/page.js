@@ -1721,6 +1721,140 @@ export default function Home() {
                 </div>
 
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="mb-5 text-2xl font-black">Suivi des pronostics</h2>
+
+                  <div className="space-y-4">
+                    {matches.map((match) => {
+                      const matchPredictions = predictions.filter(
+                        (prediction) => prediction.match_id === match.id
+                      );
+
+                      const playersWhoPredicted = players.filter((player) =>
+                        matchPredictions.some(
+                          (prediction) => prediction.player_id === player.id
+                        )
+                      );
+
+                      const playersMissing = players.filter(
+                        (player) =>
+                          !matchPredictions.some(
+                            (prediction) => prediction.player_id === player.id
+                          )
+                      );
+
+                      return (
+                        <div
+                          key={match.id}
+                          className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
+                        >
+                          <div className="mb-2 inline-flex rounded-full bg-violet-500/20 px-3 py-1 text-sm font-black text-violet-200">
+                            {match.stage === "GROUP"
+                              ? `Groupe ${match.group_name}`
+                              : roundLabels[match.stage] || match.stage}
+                          </div>
+
+                          <h3 className="font-black text-lg">
+                            {match.home_team} - {match.away_team}
+                          </h3>
+
+                          <p className="mt-1 text-sm text-slate-300">
+                            {formatDate(match.match_date)}
+                          </p>
+
+                          <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
+                              <p className="mb-3 font-black text-emerald-300">
+                                ✅ Ont pronostiqué ({playersWhoPredicted.length})
+                              </p>
+
+                              {playersWhoPredicted.length === 0 ? (
+                                <p className="text-sm text-slate-400">
+                                  Aucun joueur.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {playersWhoPredicted.map((player) => {
+                                    const prediction = matchPredictions.find(
+                                      (item) => item.player_id === player.id
+                                    );
+
+                                    return (
+                                      <div
+                                        key={player.id}
+                                        className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          {player.avatar_url ? (
+                                            <img
+                                              src={player.avatar_url}
+                                              alt={player.name}
+                                              loading="lazy"
+                                              decoding="async"
+                                              className="h-8 w-8 rounded-full object-cover"
+                                            />
+                                          ) : (
+                                            <UserCircle className="h-8 w-8 text-slate-300" />
+                                          )}
+
+                                          <span className="font-bold">
+                                            {player.name}
+                                          </span>
+                                        </div>
+
+                                        <strong>
+                                          {prediction?.predicted_home} - {prediction?.predicted_away}
+                                        </strong>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
+                              <p className="mb-3 font-black text-red-300">
+                                ❌ Pas encore pronostiqué ({playersMissing.length})
+                              </p>
+
+                              {playersMissing.length === 0 ? (
+                                <p className="text-sm text-emerald-300">
+                                  Tout le monde a joué 👌
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {playersMissing.map((player) => (
+                                    <div
+                                      key={player.id}
+                                      className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
+                                    >
+                                      {player.avatar_url ? (
+                                        <img
+                                          src={player.avatar_url}
+                                          alt={player.name}
+                                          loading="lazy"
+                                          decoding="async"
+                                          className="h-8 w-8 rounded-full object-cover"
+                                        />
+                                      ) : (
+                                        <UserCircle className="h-8 w-8 text-slate-300" />
+                                      )}
+
+                                      <span className="font-bold">
+                                        {player.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <h2 className="mb-5 text-2xl font-black">Résultats officiels</h2>
 
                   <div className="space-y-4">
