@@ -379,6 +379,7 @@ export default function Home() {
   const [creatingProfile, setCreatingProfile] = useState(false);
 
   const [tab, setTab] = useState("pronos");
+  const [selectedPastDate, setSelectedPastDate] = useState("");
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
@@ -488,6 +489,49 @@ export default function Home() {
 
     return map;
   }, [matches, sortedPlayers, predictionByPlayerAndMatch]);
+
+  const todayKey = useMemo(() => formatDayKey(new Date()), []);
+
+  const todaysMatches = useMemo(
+    () =>
+      matches
+        .filter((match) => formatDayKey(match.match_date) === todayKey)
+        .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
+    [matches, todayKey]
+  );
+
+  const pastPredictionDateOptions = useMemo(() => {
+    const keys = new Map();
+
+    matches
+      .filter((match) => {
+        const isPastDay = formatDayKey(match.match_date) < todayKey;
+        return isPastDay && getPrediction(match.id);
+      })
+      .forEach((match) => {
+        const key = formatDayKey(match.match_date);
+        if (!keys.has(key)) {
+          keys.set(key, formatDayLabel(match.match_date));
+        }
+      });
+
+    return [...keys.entries()]
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => b.key.localeCompare(a.key));
+  }, [matches, predictions, currentPlayerId, todayKey]);
+
+  const selectedPastMatches = useMemo(
+    () =>
+      matches
+        .filter(
+          (match) =>
+            selectedPastDate &&
+            formatDayKey(match.match_date) === selectedPastDate &&
+            getPrediction(match.id)
+        )
+        .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
+    [matches, selectedPastDate, predictions, currentPlayerId]
+  );
 
   const groupStandingsByName = useMemo(() => {
     const map = new Map();
@@ -778,6 +822,12 @@ export default function Home() {
       loadData(options),
     ]);
   }
+
+  useEffect(() => {
+    if (!selectedPastDate && pastPredictionDateOptions.length > 0) {
+      setSelectedPastDate(pastPredictionDateOptions[0].key);
+    }
+  }, [pastPredictionDateOptions, selectedPastDate]);
 
   useEffect(() => {
     async function initAuth() {
@@ -1084,6 +1134,19 @@ export default function Home() {
     return new Date(date).toLocaleString("fr-FR", {
       dateStyle: "medium",
       timeStyle: "short",
+    });
+  }
+
+  function formatDayKey(date) {
+    return new Date(date).toLocaleDateString("fr-CA");
+  }
+
+  function formatDayLabel(date) {
+    return new Date(date).toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
     });
   }
 
@@ -1600,6 +1663,41 @@ export default function Home() {
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setTab("jour")}
+            className={`rounded-[2rem] border p-6 text-left shadow-xl backdrop-blur-md transition ${
+              tab === "jour"
+                ? "border-yellow-300/40 bg-yellow-400/20"
+                : "border-white/15 bg-[#22123a]/80 hover:bg-yellow-400/10"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">📅</span>
+              <div>
+                <p className="text-sm text-slate-300">Aujourd’hui</p>
+                <p className="text-2xl font-black">Mes pronos du jour</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTab("historique")}
+            className={`rounded-[2rem] border p-6 text-left shadow-xl backdrop-blur-md transition ${
+              tab === "historique"
+                ? "border-violet-300/40 bg-violet-500/20"
+                : "border-white/15 bg-[#22123a]/80 hover:bg-violet-500/10"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🗂️</span>
+              <div>
+                <p className="text-sm text-slate-300">Archives</p>
+                <p className="text-2xl font-black">Mes paris passés</p>
+              </div>
+            </div>
+          </button>
         </section>
 
         <nav className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-3 shadow-xl backdrop-blur-md">
@@ -1767,6 +1865,114 @@ export default function Home() {
                   </div>
 
                 </div>
+              </section>
+            )}
+
+            {tab === "jour" && (
+              <section className="space-y-6">
+                <div className="rounded-[2rem] border border-yellow-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-3">
+                    <span className="text-4xl">📅</span>
+                    <div>
+                      <h2 className="text-2xl font-black">Mes pronos du jour</h2>
+                      <p className="text-sm text-slate-300">
+                        Tes matchs du jour restent ici avec tes pronos, les scores officiels et tes points. Demain, cette page affichera automatiquement la nouvelle journée.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {todaysMatches.length === 0 ? (
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
+                    <p className="text-4xl">😴</p>
+                    <h3 className="mt-3 text-2xl font-black">Aucun match aujourd’hui</h3>
+                    <p className="mt-2 text-slate-300">
+                      Reviens demain ou consulte tes paris passés.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {todaysMatches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        locked={isMatchLocked(match.match_date)}
+                        finished={isMatchFinished(match)}
+                        prediction={getPrediction(match.id)}
+                        matchPredictionRows={getMatchPredictionRows(match.id)}
+                        localScore={scores[match.id] || {}}
+                        currentPlayerId={currentPlayerId}
+                        roundLabels={roundLabels}
+                        formattedDate={formatDate(match.match_date)}
+                        onScoreChange={handlePredictionScoreChange}
+                        onSavePrediction={savePrediction}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {tab === "historique" && (
+              <section className="space-y-6">
+                <div className="rounded-[2rem] border border-violet-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl">🗂️</span>
+                      <div>
+                        <h2 className="text-2xl font-black">Mes paris passés</h2>
+                        <p className="text-sm text-slate-300">
+                          Choisis une date pour revoir tes pronos, les résultats et les points gagnés.
+                        </p>
+                      </div>
+                    </div>
+
+                    <select
+                      value={selectedPastDate}
+                      onChange={(e) => setSelectedPastDate(e.target.value)}
+                      className="rounded-2xl bg-[#0b0513]/90 p-4 font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                    >
+                      {pastPredictionDateOptions.length === 0 ? (
+                        <option value="">Aucun pari passé</option>
+                      ) : (
+                        pastPredictionDateOptions.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {selectedPastMatches.length === 0 ? (
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
+                    <p className="text-4xl">📭</p>
+                    <h3 className="mt-3 text-2xl font-black">Aucun pari pour cette date</h3>
+                    <p className="mt-2 text-slate-300">
+                      Les paris passés apparaîtront ici après les premières journées.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {selectedPastMatches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        locked={isMatchLocked(match.match_date)}
+                        finished={isMatchFinished(match)}
+                        prediction={getPrediction(match.id)}
+                        matchPredictionRows={getMatchPredictionRows(match.id)}
+                        localScore={scores[match.id] || {}}
+                        currentPlayerId={currentPlayerId}
+                        roundLabels={roundLabels}
+                        formattedDate={formatDate(match.match_date)}
+                        onScoreChange={handlePredictionScoreChange}
+                        onSavePrediction={savePrediction}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
