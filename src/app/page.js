@@ -102,11 +102,58 @@ const MatchCard = memo(function MatchCard({
         </div>
       )}
 
-      <h3 className="text-2xl font-black">
-        {match.home_team} - {match.away_team}
-      </h3>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h3 className="text-2xl font-black">
+            {match.home_team} - {match.away_team}
+          </h3>
 
-      <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
+          <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
+        </div>
+
+        <details className="relative">
+          <summary className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl ring-1 ring-emerald-300/20 hover:bg-emerald-500/30">
+            🍀
+          </summary>
+
+          <div className="absolute right-0 z-50 mt-3 w-72 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
+            <h4 className="mb-4 text-lg font-black text-emerald-300">
+              Tendance du match
+            </h4>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                <span>{match.home_team}</span>
+                <strong>52%</strong>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                <span>Match nul</span>
+                <strong>24%</strong>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                <span>{match.away_team}</span>
+                <strong>24%</strong>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4">
+              <p className="text-sm text-emerald-200">
+                🔥 Favori
+              </p>
+
+              <p className="mt-1 text-lg font-black text-white">
+                {match.home_team}
+              </p>
+
+              <p className="mt-2 text-sm text-slate-300">
+                📈 Cote moyenne : 1.82
+              </p>
+            </div>
+          </div>
+        </details>
+      </div>
 
       <p className={`mt-2 font-black ${locked ? "text-red-400" : "text-emerald-400"}`}>
         {locked ? "🔒 Paris fermé" : "🟢 Paris ouvert"}
