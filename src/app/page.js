@@ -82,6 +82,38 @@ const MatchCard = memo(function MatchCard({
     ? "rounded-2xl bg-orange-500 px-5 py-4 font-black text-white shadow-lg shadow-orange-950/40"
     : "rounded-2xl bg-violet-600 px-5 py-4 font-black text-white shadow-lg shadow-violet-950/40";
 
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendData, setTrendData] = useState(null);
+  const [trendError, setTrendError] = useState("");
+
+  async function loadMatchTrend() {
+    if (trendLoading || trendData) return;
+
+    setTrendLoading(true);
+    setTrendError("");
+
+    try {
+      const params = new URLSearchParams({
+        home: match.home_team || "",
+        away: match.away_team || "",
+        date: match.match_date || "",
+      });
+
+      const response = await fetch(`/api/match-trend?${params.toString()}`);
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Tendance indisponible.");
+      }
+
+      setTrendData(result);
+    } catch (error) {
+      setTrendError(error.message || "Tendance indisponible.");
+    } finally {
+      setTrendLoading(false);
+    }
+  }
+
   return (
     <div
       className={`rounded-[2rem] border p-6 shadow-xl backdrop-blur-md ${
@@ -103,7 +135,7 @@ const MatchCard = memo(function MatchCard({
       )}
 
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h3 className="text-2xl font-black">
             {match.home_team} - {match.away_team}
           </h3>
@@ -111,46 +143,82 @@ const MatchCard = memo(function MatchCard({
           <p className="mt-2 text-sm text-slate-300">{formattedDate}</p>
         </div>
 
-        <details className="relative">
-          <summary className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl ring-1 ring-emerald-300/20 hover:bg-emerald-500/30">
+        <details
+          className="relative shrink-0"
+          onToggle={(event) => {
+            if (event.currentTarget.open) {
+              loadMatchTrend();
+            }
+          }}
+        >
+          <summary className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl shadow-lg ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30">
             🍀
           </summary>
 
-          <div className="absolute right-0 z-50 mt-3 w-72 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
+          <div className="absolute right-0 z-50 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12091f] p-5 shadow-2xl">
             <h4 className="mb-4 text-lg font-black text-emerald-300">
               Tendance du match
             </h4>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                <span>{match.home_team}</span>
-                <strong>52%</strong>
+            {trendLoading && (
+              <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-300">
+                <Loader2 className="h-5 w-5 animate-spin text-emerald-300" />
+                Chargement des vraies tendances...
               </div>
+            )}
 
-              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                <span>Match nul</span>
-                <strong>24%</strong>
+            {!trendLoading && trendError && (
+              <div className="rounded-2xl bg-red-500/10 p-4 text-sm font-bold text-red-200 ring-1 ring-red-300/10">
+                {trendError}
               </div>
+            )}
 
-              <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-                <span>{match.away_team}</span>
-                <strong>24%</strong>
-              </div>
-            </div>
+            {!trendLoading && trendData && (
+              <>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                    <span className="font-bold">{match.home_team}</span>
+                    <strong>{trendData.percent?.home || "-"}</strong>
+                  </div>
 
-            <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4">
-              <p className="text-sm text-emerald-200">
-                🔥 Favori
+                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                    <span className="font-bold">Match nul</span>
+                    <strong>{trendData.percent?.draw || "-"}</strong>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+                    <span className="font-bold">{match.away_team}</span>
+                    <strong>{trendData.percent?.away || "-"}</strong>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
+                  <p className="text-sm text-emerald-200">🔥 Favori</p>
+
+                  <p className="mt-1 text-lg font-black text-white">
+                    {trendData.favorite || "Indisponible"}
+                  </p>
+
+                  {trendData.advice && (
+                    <p className="mt-2 text-sm font-bold text-slate-300">
+                      {trendData.advice}
+                    </p>
+                  )}
+                </div>
+
+                {trendData.sourceFixture && (
+                  <p className="mt-4 text-xs font-bold text-slate-400">
+                    Source API-Football : {trendData.sourceFixture}
+                  </p>
+                )}
+              </>
+            )}
+
+            {!trendLoading && !trendData && !trendError && (
+              <p className="rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-300">
+                Clique sur 🍀 pour charger la tendance.
               </p>
-
-              <p className="mt-1 text-lg font-black text-white">
-                {match.home_team}
-              </p>
-
-              <p className="mt-2 text-sm text-slate-300">
-                📈 Cote moyenne : 1.82
-              </p>
-            </div>
+            )}
           </div>
         </details>
       </div>
