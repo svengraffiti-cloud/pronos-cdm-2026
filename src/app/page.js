@@ -417,6 +417,34 @@ export default function Home() {
     [matches]
   );
 
+  const openMatches = useMemo(
+    () =>
+      matches
+        .filter(
+          (match) =>
+            match.home_score === null ||
+            match.home_score === undefined ||
+            match.away_score === null ||
+            match.away_score === undefined
+        )
+        .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
+    [matches]
+  );
+
+  const finishedMatches = useMemo(
+    () =>
+      matches
+        .filter(
+          (match) =>
+            match.home_score !== null &&
+            match.home_score !== undefined &&
+            match.away_score !== null &&
+            match.away_score !== undefined
+        )
+        .sort((a, b) => new Date(b.match_date) - new Date(a.match_date)),
+    [matches]
+  );
+
   const predictionByPlayerAndMatch = useMemo(() => {
     const map = new Map();
 
@@ -877,7 +905,7 @@ export default function Home() {
     if (!session?.user?.id) return;
 
     const channel = supabase
-      .channel("prediction-refresh")
+      .channel("app-live-refresh")
       .on(
         "postgres_changes",
         {
@@ -886,7 +914,18 @@ export default function Home() {
           table: "predictions",
         },
         async () => {
-          await loadData({ silent: true });
+          await refreshEverything(session.user.id, { silent: true });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "matches",
+        },
+        async () => {
+          await refreshEverything(session.user.id, { silent: true });
         }
       )
       .subscribe();
@@ -1209,6 +1248,41 @@ export default function Home() {
     [currentPlayerId, predictionByPlayerAndMatch]
   );
 
+  async function recalculateAllFinishedPredictions(localMatches = matches, localPredictions = predictions) {
+    const finishedMatchesMap = new Map(
+      localMatches
+        .filter(
+          (match) =>
+            match.home_score !== null &&
+            match.home_score !== undefined &&
+            match.away_score !== null &&
+            match.away_score !== undefined
+        )
+        .map((match) => [match.id, match])
+    );
+
+    const updates = localPredictions
+      .map((prediction) => {
+        const match = finishedMatchesMap.get(prediction.match_id);
+
+        if (!match) return null;
+
+        return {
+          id: prediction.id,
+          points: calculatePredictionPoints(prediction, match),
+        };
+      })
+      .filter(Boolean);
+
+    if (updates.length === 0) return;
+
+    const { error } = await supabase.from("predictions").upsert(updates, {
+      onConflict: "id",
+    });
+
+    if (error) throw error;
+  }
+
   async function saveOfficialScore(matchId) {
     if (!isAdmin) {
       alert("Accès admin requis.");
@@ -1216,35 +1290,51 @@ export default function Home() {
     }
 
     const match = matches.find((m) => m.id === matchId);
+
+    if (!match) {
+      alert("Match introuvable.");
+      return;
+    }
+
     const home = scores[matchId]?.officialHome;
     const away = scores[matchId]?.officialAway;
 
     const newHome = home === "" || home === undefined ? null : Number(home);
     const newAway = away === "" || away === undefined ? null : Number(away);
 
-    await supabase
-      .from("matches")
-      .update({
-        home_score: newHome,
-        away_score: newAway,
-      })
-      .eq("id", matchId);
+    try {
+      setRefreshing(true);
 
-    const updatedMatch = {
-      ...match,
-      home_score: newHome,
-      away_score: newAway,
-    };
+      const { error: matchError } = await supabase
+        .from("matches")
+        .update({
+          home_score: newHome,
+          away_score: newAway,
+        })
+        .eq("id", matchId);
 
-    const relatedPredictions = predictions.filter((p) => p.match_id === matchId);
+      if (matchError) throw matchError;
 
-    for (const prediction of relatedPredictions) {
-      const points = calculatePredictionPoints(prediction, updatedMatch);
+      const updatedMatches = matches.map((item) =>
+        item.id === matchId
+          ? {
+              ...item,
+              home_score: newHome,
+              away_score: newAway,
+            }
+          : item
+      );
 
-      await supabase.from("predictions").update({ points }).eq("id", prediction.id);
+      await recalculateAllFinishedPredictions(updatedMatches, predictions);
+      await refreshEverything(session?.user?.id, { silent: true });
+
+      alert("Score officiel enregistré et classement recalculé ✅");
+    } catch (error) {
+      console.error("Erreur enregistrement score officiel:", error);
+      alert(error.message || "Erreur pendant l'enregistrement du score.");
+    } finally {
+      setRefreshing(false);
     }
-
-    await loadData({ silent: true });
   }
 
   async function addPlayer() {
@@ -1593,6 +1683,10 @@ export default function Home() {
                 icon: "⚽",
               },
               {
+                key: "resultats",
+                icon: "✅",
+              },
+              {
                 key: "classement",
                 icon: "🏆",
               },
@@ -1679,15 +1773,7 @@ export default function Home() {
                     </div>
 
                     <div className="grid gap-5 md:grid-cols-2">
-                      {matches
-                        .filter(
-                          (match) =>
-                            match.home_score === null ||
-                            match.home_score === undefined ||
-                            match.away_score === null ||
-                            match.away_score === undefined
-                        )
-                        .map((match) => (
+                      {openMatches.map((match) => (
                           <MatchCard
                             key={match.id}
                             match={match}
@@ -1706,49 +1792,48 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div>
-                    <div className="mb-5 flex items-center gap-3">
-                      <span className="text-3xl">✅</span>
 
-                      <div>
-                        <h2 className="text-2xl font-black">
-                          Matchs terminés
-                        </h2>
+                </div>
+              </section>
+            )}
 
-                        <p className="text-sm text-slate-300">
-                          Historique des matchs déjà joués et points gagnés.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-5 opacity-90 md:grid-cols-2">
-                      {matches
-                        .filter(
-                          (match) =>
-                            match.home_score !== null &&
-                            match.home_score !== undefined &&
-                            match.away_score !== null &&
-                            match.away_score !== undefined
-                        )
-                        .map((match) => (
-                          <MatchCard
-                            key={match.id}
-                            match={match}
-                            locked={isMatchLocked(match.match_date)}
-                            finished={isMatchFinished(match)}
-                            prediction={getPrediction(match.id)}
-                            matchPredictionRows={getMatchPredictionRows(match.id)}
-                            localScore={scores[match.id] || {}}
-                            currentPlayerId={currentPlayerId}
-                            roundLabels={roundLabels}
-                            formattedDate={formatDate(match.match_date)}
-                            onScoreChange={handlePredictionScoreChange}
-                            onSavePrediction={savePrediction}
-                          />
-                        ))}
+            {tab === "resultats" && (
+              <section className="space-y-6">
+                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">✅</span>
+                    <div>
+                      <h2 className="text-2xl font-black">Matchs du jour terminés</h2>
+                      <p className="text-sm text-slate-300">
+                        Tous les matchs déjà validés, avec le score officiel, les pronos et les points récoltés.
+                      </p>
                     </div>
                   </div>
+                </div>
 
+                <div className="grid gap-5 md:grid-cols-2">
+                  {finishedMatches.length === 0 ? (
+                    <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 text-center text-slate-300 shadow-xl backdrop-blur-md md:col-span-2">
+                      Aucun match terminé pour le moment.
+                    </div>
+                  ) : (
+                    finishedMatches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        locked={true}
+                        finished={true}
+                        prediction={getPrediction(match.id)}
+                        matchPredictionRows={getMatchPredictionRows(match.id)}
+                        localScore={scores[match.id] || {}}
+                        currentPlayerId={currentPlayerId}
+                        roundLabels={roundLabels}
+                        formattedDate={formatDate(match.match_date)}
+                        onScoreChange={handlePredictionScoreChange}
+                        onSavePrediction={savePrediction}
+                      />
+                    ))
+                  )}
                 </div>
               </section>
             )}
