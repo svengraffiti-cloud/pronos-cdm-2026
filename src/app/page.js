@@ -1721,7 +1721,7 @@ export default function Home() {
                 </div>
 
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="mb-5 text-2xl font-black">Suivi des pronostics</h2>
+                  <h2 className="mb-5 text-2xl font-black">Résultats officiels</h2>
 
                   <div className="space-y-4">
                     {matches.map((match) => {
@@ -1747,13 +1747,13 @@ export default function Home() {
                           key={match.id}
                           className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
                         >
-                          <div className="mb-2 inline-flex rounded-full bg-violet-500/20 px-3 py-1 text-sm font-black text-violet-200">
+                          <div className="mb-2 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
                             {match.stage === "GROUP"
                               ? `Groupe ${match.group_name}`
                               : roundLabels[match.stage] || match.stage}
                           </div>
 
-                          <h3 className="font-black text-lg">
+                          <h3 className="font-black">
                             {match.home_team} - {match.away_team}
                           </h3>
 
@@ -1761,162 +1761,150 @@ export default function Home() {
                             {formatDate(match.match_date)}
                           </p>
 
-                          <div className="mt-4 grid gap-4 md:grid-cols-2">
-                            <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
-                              <p className="mb-3 font-black text-emerald-300">
-                                ✅ Ont pronostiqué ({playersWhoPredicted.length})
-                              </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <input
+                              type="number"
+                              min="0"
+                              value={scores[match.id]?.officialHome ?? ""}
+                              onChange={(e) =>
+                                setScores({
+                                  ...scores,
+                                  [match.id]: {
+                                    ...scores[match.id],
+                                    officialHome: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                            />
 
-                              {playersWhoPredicted.length === 0 ? (
-                                <p className="text-sm text-slate-400">
-                                  Aucun joueur.
+                            <span>-</span>
+
+                            <input
+                              type="number"
+                              min="0"
+                              value={scores[match.id]?.officialAway ?? ""}
+                              onChange={(e) =>
+                                setScores({
+                                  ...scores,
+                                  [match.id]: {
+                                    ...scores[match.id],
+                                    officialAway: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                            />
+
+                            <button
+                              onClick={() => saveOfficialScore(match.id)}
+                              className="rounded-2xl bg-emerald-600 px-4 py-3 font-black"
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
+
+                          <details className="mt-4 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
+                            <summary className="cursor-pointer list-none font-black text-emerald-300">
+                              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                <span>Voir le suivi des pronos</span>
+                                <span className="text-sm text-slate-300">
+                                  ✅ {playersWhoPredicted.length}/{players.length} ont joué · ❌ {playersMissing.length} manquant(s)
+                                </span>
+                              </div>
+                            </summary>
+
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                              <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
+                                <p className="mb-3 font-black text-emerald-300">
+                                  ✅ Ont pronostiqué ({playersWhoPredicted.length})
                                 </p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {playersWhoPredicted.map((player) => {
-                                    const prediction = matchPredictions.find(
-                                      (item) => item.player_id === player.id
-                                    );
 
-                                    return (
+                                {playersWhoPredicted.length === 0 ? (
+                                  <p className="text-sm text-slate-400">
+                                    Aucun joueur.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {playersWhoPredicted.map((player) => {
+                                      const prediction = matchPredictions.find(
+                                        (item) => item.player_id === player.id
+                                      );
+
+                                      return (
+                                        <div
+                                          key={player.id}
+                                          className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            {player.avatar_url ? (
+                                              <img
+                                                src={player.avatar_url}
+                                                alt={player.name}
+                                                loading="lazy"
+                                                decoding="async"
+                                                className="h-8 w-8 rounded-full object-cover"
+                                              />
+                                            ) : (
+                                              <UserCircle className="h-8 w-8 text-slate-300" />
+                                            )}
+
+                                            <span className="font-bold">
+                                              {player.name}
+                                            </span>
+                                          </div>
+
+                                          <strong>
+                                            {prediction?.predicted_home} - {prediction?.predicted_away}
+                                          </strong>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
+                                <p className="mb-3 font-black text-red-300">
+                                  ❌ Pas encore pronostiqué ({playersMissing.length})
+                                </p>
+
+                                {playersMissing.length === 0 ? (
+                                  <p className="text-sm text-emerald-300">
+                                    Tout le monde a joué 👌
+                                  </p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {playersMissing.map((player) => (
                                       <div
                                         key={player.id}
-                                        className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                        className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
                                       >
-                                        <div className="flex items-center gap-3">
-                                          {player.avatar_url ? (
-                                            <img
-                                              src={player.avatar_url}
-                                              alt={player.name}
-                                              loading="lazy"
-                                              decoding="async"
-                                              className="h-8 w-8 rounded-full object-cover"
-                                            />
-                                          ) : (
-                                            <UserCircle className="h-8 w-8 text-slate-300" />
-                                          )}
+                                        {player.avatar_url ? (
+                                          <img
+                                            src={player.avatar_url}
+                                            alt={player.name}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="h-8 w-8 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <UserCircle className="h-8 w-8 text-slate-300" />
+                                        )}
 
-                                          <span className="font-bold">
-                                            {player.name}
-                                          </span>
-                                        </div>
-
-                                        <strong>
-                                          {prediction?.predicted_home} - {prediction?.predicted_away}
-                                        </strong>
+                                        <span className="font-bold">
+                                          {player.name}
+                                        </span>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-
-                            <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
-                              <p className="mb-3 font-black text-red-300">
-                                ❌ Pas encore pronostiqué ({playersMissing.length})
-                              </p>
-
-                              {playersMissing.length === 0 ? (
-                                <p className="text-sm text-emerald-300">
-                                  Tout le monde a joué 👌
-                                </p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {playersMissing.map((player) => (
-                                    <div
-                                      key={player.id}
-                                      className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
-                                    >
-                                      {player.avatar_url ? (
-                                        <img
-                                          src={player.avatar_url}
-                                          alt={player.name}
-                                          loading="lazy"
-                                          decoding="async"
-                                          className="h-8 w-8 rounded-full object-cover"
-                                        />
-                                      ) : (
-                                        <UserCircle className="h-8 w-8 text-slate-300" />
-                                      )}
-
-                                      <span className="font-bold">
-                                        {player.name}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          </details>
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-
-                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="mb-5 text-2xl font-black">Résultats officiels</h2>
-
-                  <div className="space-y-4">
-                    {matches.map((match) => (
-                      <div
-                        key={match.id}
-                        className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
-                      >
-                        <div className="mb-2 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
-                          {match.stage === "GROUP"
-                            ? `Groupe ${match.group_name}`
-                            : roundLabels[match.stage] || match.stage}
-                        </div>
-
-                        <h3 className="font-black">
-                          {match.home_team} - {match.away_team}
-                        </h3>
-
-                        <div className="mt-3 flex items-center gap-3">
-                          <input
-                            type="number"
-                            min="0"
-                            value={scores[match.id]?.officialHome ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  officialHome: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                          />
-
-                          <span>-</span>
-
-                          <input
-                            type="number"
-                            min="0"
-                            value={scores[match.id]?.officialAway ?? ""}
-                            onChange={(e) =>
-                              setScores({
-                                ...scores,
-                                [match.id]: {
-                                  ...scores[match.id],
-                                  officialAway: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                          />
-
-                          <button
-                            onClick={() => saveOfficialScore(match.id)}
-                            className="rounded-2xl bg-emerald-600 px-4 py-3 font-black"
-                          >
-                            Enregistrer
-                          </button>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </section>
