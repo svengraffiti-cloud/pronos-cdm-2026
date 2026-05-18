@@ -7,6 +7,11 @@ import {
   Users,
   CalendarDays,
   Settings,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  Trash2,
+  RefreshCcw,
   Loader2,
   Bell,
   LogOut,
@@ -1315,19 +1320,50 @@ export default function Home() {
     }
 
     const match = matches.find((m) => m.id === matchId);
+
+    if (!match) {
+      alert("Match introuvable.");
+      return;
+    }
+
     const home = scores[matchId]?.officialHome;
     const away = scores[matchId]?.officialAway;
 
-    const newHome = home === "" || home === undefined ? null : Number(home);
-    const newAway = away === "" || away === undefined ? null : Number(away);
+    if (home === "" || home === undefined || away === "" || away === undefined) {
+      alert("Entre les deux scores avant de valider.");
+      return;
+    }
 
-    await supabase
+    const newHome = Number(home);
+    const newAway = Number(away);
+
+    if (!Number.isInteger(newHome) || !Number.isInteger(newAway) || newHome < 0 || newAway < 0) {
+      alert("Scores invalides : utilise uniquement des nombres entiers positifs.");
+      return;
+    }
+
+    const alreadyValidated = match.home_score !== null && match.away_score !== null;
+    const confirmationMessage = alreadyValidated
+      ? `Ce match a déjà un score enregistré (${match.home_score} - ${match.away_score}). Remplacer par ${newHome} - ${newAway} et recalculer les points ?`
+      : `Valider le score ${newHome} - ${newAway} pour ${match.home_team} - ${match.away_team} ?`;
+
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    const { error: matchError } = await supabase
       .from("matches")
       .update({
         home_score: newHome,
         away_score: newAway,
       })
       .eq("id", matchId);
+
+    if (matchError) {
+      console.error("Erreur validation score:", matchError);
+      alert("Erreur pendant la validation du score.");
+      return;
+    }
 
     const updatedMatch = {
       ...match,
@@ -1340,7 +1376,14 @@ export default function Home() {
     for (const prediction of relatedPredictions) {
       const points = calculatePredictionPoints(prediction, updatedMatch);
 
-      await supabase.from("predictions").update({ points }).eq("id", prediction.id);
+      const { error: predictionError } = await supabase
+        .from("predictions")
+        .update({ points })
+        .eq("id", prediction.id);
+
+      if (predictionError) {
+        console.error("Erreur recalcul prono:", predictionError);
+      }
     }
 
     await refreshEverything(session?.user?.id, { silent: true });
@@ -1349,6 +1392,89 @@ export default function Home() {
       ...prev,
       [matchId]: true,
     }));
+  }
+
+  async function recalculateAllPoints() {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
+    if (!window.confirm("Recalculer tous les points de tous les pronostics ?")) {
+      return;
+    }
+
+    const finishedMatchesById = new Map(
+      matches
+        .filter((match) => match.home_score !== null && match.away_score !== null)
+        .map((match) => [match.id, match])
+    );
+
+    for (const prediction of predictions) {
+      const match = finishedMatchesById.get(prediction.match_id);
+      const points = match ? calculatePredictionPoints(prediction, match) : 0;
+
+      const { error } = await supabase
+        .from("predictions")
+        .update({ points })
+        .eq("id", prediction.id);
+
+      if (error) {
+        console.error("Erreur recalcul global:", error);
+      }
+    }
+
+    await refreshEverything(session?.user?.id, { silent: true });
+    alert("Tous les points ont été recalculés proprement.");
+  }
+
+  async function deleteMatch(matchId) {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
+    const match = matches.find((m) => m.id === matchId);
+
+    if (!match) {
+      alert("Match introuvable.");
+      return;
+    }
+
+    const relatedPredictions = predictions.filter((prediction) => prediction.match_id === matchId);
+
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${match.home_team} - ${match.away_team} ?\n\nCela supprimera aussi ${relatedPredictions.length} pronostic(s) lié(s).`
+      )
+    ) {
+      return;
+    }
+
+    const { error: predictionsError } = await supabase
+      .from("predictions")
+      .delete()
+      .eq("match_id", matchId);
+
+    if (predictionsError) {
+      console.error("Erreur suppression pronostics:", predictionsError);
+      alert("Erreur pendant la suppression des pronostics liés.");
+      return;
+    }
+
+    const { error: matchError } = await supabase
+      .from("matches")
+      .delete()
+      .eq("id", matchId);
+
+    if (matchError) {
+      console.error("Erreur suppression match:", matchError);
+      alert("Erreur pendant la suppression du match.");
+      return;
+    }
+
+    await refreshEverything(session?.user?.id, { silent: true });
+    alert("Match supprimé proprement.");
   }
 
   async function addPlayer() {
@@ -2158,220 +2284,400 @@ export default function Home() {
 
             {tab === "admin" && isAdmin && (
               <section className="space-y-6">
-                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
-                    <Settings className="h-6 w-6" />
-                    Ajouter un joueur manuel
-                  </h2>
+                <div className="relative overflow-hidden rounded-[2rem] border border-emerald-300/25 bg-[#12091f]/80 p-6 shadow-2xl backdrop-blur-md">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-white to-violet-500" />
 
-                  <div className="flex gap-3">
-                    <input
-                      value={newPlayer}
-                      onChange={(e) => setNewPlayer(e.target.value)}
-                      placeholder="Nom du joueur"
-                      className="flex-1 rounded-2xl bg-[#12091f]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                    />
+                  <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/20 ring-1 ring-emerald-300/20">
+                        <ShieldCheck className="h-9 w-9 text-emerald-300" />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
+                          Dashboard Admin Premium
+                        </p>
+                        <h2 className="mt-2 text-3xl font-black md:text-4xl">
+                          Les Pronos de Papy
+                        </h2>
+                        <p className="mt-2 max-w-3xl text-sm text-slate-300">
+                          Gestion rapide des scores, validation sécurisée, recalcul propre des points et suppression simple des matchs tests.
+                        </p>
+                      </div>
+                    </div>
 
                     <button
-                      onClick={addPlayer}
-                      className="rounded-2xl bg-violet-600 px-5 py-4 font-black"
+                      type="button"
+                      onClick={recalculateAllPoints}
+                      className="inline-flex items-center justify-center gap-3 rounded-2xl bg-violet-600 px-5 py-4 font-black text-white shadow-lg shadow-violet-950/40 transition hover:bg-violet-500"
                     >
-                      Ajouter
+                      <RefreshCcw className="h-5 w-5" />
+                      Recalculer tous les points
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="mb-5 text-2xl font-black">Résultats officiels</h2>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="h-7 w-7 text-emerald-300" />
+                      <div>
+                        <p className="text-sm text-slate-300">Matchs total</p>
+                        <p className="text-4xl font-black">{matches.length}</p>
+                      </div>
+                    </div>
+                  </div>
 
-                  <div className="space-y-4">
-                    {matches.map((match) => {
-                      const matchPredictions = predictions.filter(
-                        (prediction) => prediction.match_id === match.id
-                      );
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-7 w-7 text-yellow-300" />
+                      <div>
+                        <p className="text-sm text-slate-300">Scores en attente</p>
+                        <p className="text-4xl font-black">
+                          {
+                            matches.filter(
+                              (match) =>
+                                match.home_score === null ||
+                                match.home_score === undefined ||
+                                match.away_score === null ||
+                                match.away_score === undefined
+                            ).length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                      const playersWhoPredicted = players.filter((player) =>
-                        matchPredictions.some(
-                          (prediction) => prediction.player_id === player.id
-                        )
-                      );
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+                      <div>
+                        <p className="text-sm text-slate-300">Matchs terminés</p>
+                        <p className="text-4xl font-black">
+                          {
+                            matches.filter(
+                              (match) =>
+                                match.home_score !== null &&
+                                match.home_score !== undefined &&
+                                match.away_score !== null &&
+                                match.away_score !== undefined
+                            ).length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                      const playersMissing = players.filter(
-                        (player) =>
-                          !matchPredictions.some(
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-7 w-7 text-violet-300" />
+                      <div>
+                        <p className="text-sm text-slate-300">Pronostics</p>
+                        <p className="text-4xl font-black">{predictions.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+                  <div className="space-y-6">
+                    <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                      <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
+                        <Settings className="h-6 w-6 text-emerald-300" />
+                        Ajouter un joueur manuel
+                      </h2>
+
+                      <div className="flex gap-3">
+                        <input
+                          value={newPlayer}
+                          onChange={(e) => setNewPlayer(e.target.value)}
+                          placeholder="Nom du joueur"
+                          className="flex-1 rounded-2xl bg-[#12091f]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                        />
+
+                        <button
+                          onClick={addPlayer}
+                          className="rounded-2xl bg-violet-600 px-5 py-4 font-black"
+                        >
+                          Ajouter
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                      <h2 className="mb-5 flex items-center gap-2 text-2xl font-black">
+                        <Trophy className="h-6 w-6 text-yellow-400" />
+                        Classement admin
+                      </h2>
+
+                      <div className="space-y-3">
+                        {rankingPlayers.map((player, index) => (
+                          <div
+                            key={player.id}
+                            className="flex items-center justify-between rounded-2xl bg-white/5 p-4 ring-1 ring-white/10"
+                          >
+                            <div className="flex items-center gap-3">
+                              {player.avatar_url ? (
+                                <img
+                                  src={player.avatar_url}
+                                  alt={player.name}
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="h-9 w-9 rounded-full object-cover"
+                                />
+                              ) : (
+                                <UserCircle className="h-9 w-9 text-slate-300" />
+                              )}
+                              <span className="font-black">
+                                {index + 1}. {player.name}
+                              </span>
+                            </div>
+
+                            <strong className="text-yellow-300">
+                              {playerTotal(player.id)} pts
+                            </strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                    <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-black">Gestion premium des scores</h2>
+                        <p className="mt-1 text-sm text-slate-300">
+                          Saisie directe, confirmation avant validation, recalcul automatique des points et suppression sécurisée des matchs tests.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {matches.map((match) => {
+                        const matchPredictions = predictions.filter(
+                          (prediction) => prediction.match_id === match.id
+                        );
+
+                        const playersWhoPredicted = players.filter((player) =>
+                          matchPredictions.some(
                             (prediction) => prediction.player_id === player.id
                           )
-                      );
+                        );
 
-                      return (
-                        <div
-                          key={match.id}
-                          className="rounded-2xl bg-[#12091f]/70 p-4 ring-1 ring-white/10"
-                        >
-                          <div className="mb-2 inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
-                            {match.stage === "GROUP"
-                              ? `Groupe ${match.group_name}`
-                              : roundLabels[match.stage] || match.stage}
-                          </div>
+                        const playersMissing = players.filter(
+                          (player) =>
+                            !matchPredictions.some(
+                              (prediction) => prediction.player_id === player.id
+                            )
+                        );
 
-                          <h3 className="font-black">
-                            {match.home_team} - {match.away_team}
-                          </h3>
+                        const matchFinished =
+                          match.home_score !== null &&
+                          match.home_score !== undefined &&
+                          match.away_score !== null &&
+                          match.away_score !== undefined;
 
-                          <p className="mt-1 text-sm text-slate-300">
-                            {formatDate(match.match_date)}
-                          </p>
+                        return (
+                          <div
+                            key={match.id}
+                            className={`rounded-2xl p-4 ring-1 ${
+                              matchFinished
+                                ? "bg-emerald-500/10 ring-emerald-300/10"
+                                : "bg-white/5 ring-white/10"
+                            }`}
+                          >
+                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200">
+                                    {match.stage === "GROUP"
+                                      ? `Groupe ${match.group_name}`
+                                      : roundLabels[match.stage] || match.stage}
+                                  </span>
 
-                          <div className="mt-3 flex flex-wrap items-center gap-3">
-                            <input
-                              type="number"
-                              min="0"
-                              value={scores[match.id]?.officialHome ?? ""}
-                              onChange={(e) =>
-                                setScores({
-                                  ...scores,
-                                  [match.id]: {
-                                    ...scores[match.id],
-                                    officialHome: e.target.value,
-                                  },
-                                })
-                              }
-                              className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                            />
+                                  <span
+                                    className={`inline-flex rounded-full px-3 py-1 text-sm font-black ${
+                                      matchFinished
+                                        ? "bg-emerald-500/20 text-emerald-200"
+                                        : "bg-yellow-400/20 text-yellow-200"
+                                    }`}
+                                  >
+                                    {matchFinished ? "Score validé" : "Score en attente"}
+                                  </span>
+                                </div>
 
-                            <span>-</span>
+                                <h3 className="mt-3 text-xl font-black">
+                                  {match.home_team} - {match.away_team}
+                                </h3>
 
-                            <input
-                              type="number"
-                              min="0"
-                              value={scores[match.id]?.officialAway ?? ""}
-                              onChange={(e) =>
-                                setScores({
-                                  ...scores,
-                                  [match.id]: {
-                                    ...scores[match.id],
-                                    officialAway: e.target.value,
-                                  },
-                                })
-                              }
-                              className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                            />
-
-                            <button
-                              onClick={() => saveOfficialScore(match.id)}
-                              className={`rounded-2xl px-4 py-3 font-black transition ${
-                                savedMatches[match.id]
-                                  ? "bg-yellow-400 text-black"
-                                  : "bg-emerald-600 text-white"
-                              }`}
-                            >
-                              {savedMatches[match.id]
-                                ? "✅ Enregistré"
-                                : "Enregistrer"}
-                            </button>
-                          </div>
-
-                          <details className="mt-4 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
-                            <summary className="cursor-pointer list-none font-black text-emerald-300">
-                              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                                <span>Voir le suivi des pronos</span>
-                                <span className="text-sm text-slate-300">
-                                  ✅ {playersWhoPredicted.length}/{players.length} ont joué · ❌ {playersMissing.length} manquant(s)
-                                </span>
-                              </div>
-                            </summary>
-
-                            <div className="mt-4 grid gap-4 md:grid-cols-2">
-                              <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
-                                <p className="mb-3 font-black text-emerald-300">
-                                  ✅ Ont pronostiqué ({playersWhoPredicted.length})
+                                <p className="mt-1 text-sm text-slate-300">
+                                  {formatDate(match.match_date)}
                                 </p>
+                              </div>
 
-                                {playersWhoPredicted.length === 0 ? (
-                                  <p className="text-sm text-slate-400">
-                                    Aucun joueur.
+                              <button
+                                type="button"
+                                onClick={() => deleteMatch(match.id)}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-500/20 px-4 py-3 font-black text-red-200 ring-1 ring-red-300/20 transition hover:bg-red-500/30"
+                              >
+                                <Trash2 className="h-5 w-5" />
+                                Supprimer test
+                              </button>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                              <input
+                                type="number"
+                                min="0"
+                                value={scores[match.id]?.officialHome ?? ""}
+                                onChange={(e) =>
+                                  setScores({
+                                    ...scores,
+                                    [match.id]: {
+                                      ...scores[match.id],
+                                      officialHome: e.target.value,
+                                    },
+                                  })
+                                }
+                                className="w-24 rounded-2xl bg-slate-950 p-4 text-center text-xl font-black outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                              />
+
+                              <span className="text-2xl font-black">-</span>
+
+                              <input
+                                type="number"
+                                min="0"
+                                value={scores[match.id]?.officialAway ?? ""}
+                                onChange={(e) =>
+                                  setScores({
+                                    ...scores,
+                                    [match.id]: {
+                                      ...scores[match.id],
+                                      officialAway: e.target.value,
+                                    },
+                                  })
+                                }
+                                className="w-24 rounded-2xl bg-slate-950 p-4 text-center text-xl font-black outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+                              />
+
+                              <button
+                                onClick={() => saveOfficialScore(match.id)}
+                                className={`rounded-2xl px-5 py-4 font-black transition ${
+                                  savedMatches[match.id]
+                                    ? "bg-yellow-400 text-black"
+                                    : "bg-emerald-600 text-white hover:bg-emerald-500"
+                                }`}
+                              >
+                                {savedMatches[match.id]
+                                  ? "✅ Enregistré"
+                                  : matchFinished
+                                  ? "Modifier + recalculer"
+                                  : "Valider le score"}
+                              </button>
+                            </div>
+
+                            <details className="mt-4 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
+                              <summary className="cursor-pointer list-none font-black text-emerald-300">
+                                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                  <span>Suivi des pronostics</span>
+                                  <span className="text-sm text-slate-300">
+                                    ✅ {playersWhoPredicted.length}/{players.length} ont joué · ❌ {playersMissing.length} manquant(s)
+                                  </span>
+                                </div>
+                              </summary>
+
+                              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
+                                  <p className="mb-3 font-black text-emerald-300">
+                                    ✅ Ont pronostiqué ({playersWhoPredicted.length})
                                   </p>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {playersWhoPredicted.map((player) => {
-                                      const prediction = matchPredictions.find(
-                                        (item) => item.player_id === player.id
-                                      );
 
-                                      return (
+                                  {playersWhoPredicted.length === 0 ? (
+                                    <p className="text-sm text-slate-400">
+                                      Aucun joueur.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {playersWhoPredicted.map((player) => {
+                                        const prediction = matchPredictions.find(
+                                          (item) => item.player_id === player.id
+                                        );
+
+                                        return (
+                                          <div
+                                            key={player.id}
+                                            className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              {player.avatar_url ? (
+                                                <img
+                                                  src={player.avatar_url}
+                                                  alt={player.name}
+                                                  loading="lazy"
+                                                  decoding="async"
+                                                  className="h-8 w-8 rounded-full object-cover"
+                                                />
+                                              ) : (
+                                                <UserCircle className="h-8 w-8 text-slate-300" />
+                                              )}
+
+                                              <span className="font-bold">
+                                                {player.name}
+                                              </span>
+                                            </div>
+
+                                            <strong>
+                                              {prediction?.predicted_home} - {prediction?.predicted_away}
+                                            </strong>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
+                                  <p className="mb-3 font-black text-red-300">
+                                    ❌ Pas encore pronostiqué ({playersMissing.length})
+                                  </p>
+
+                                  {playersMissing.length === 0 ? (
+                                    <p className="text-sm text-emerald-300">
+                                      Tout le monde a joué 👌
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {playersMissing.map((player) => (
                                         <div
                                           key={player.id}
-                                          className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                                          className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
                                         >
-                                          <div className="flex items-center gap-3">
-                                            {player.avatar_url ? (
-                                              <img
-                                                src={player.avatar_url}
-                                                alt={player.name}
-                                                loading="lazy"
-                                                decoding="async"
-                                                className="h-8 w-8 rounded-full object-cover"
-                                              />
-                                            ) : (
-                                              <UserCircle className="h-8 w-8 text-slate-300" />
-                                            )}
+                                          {player.avatar_url ? (
+                                            <img
+                                              src={player.avatar_url}
+                                              alt={player.name}
+                                              loading="lazy"
+                                              decoding="async"
+                                              className="h-8 w-8 rounded-full object-cover"
+                                            />
+                                          ) : (
+                                            <UserCircle className="h-8 w-8 text-slate-300" />
+                                          )}
 
-                                            <span className="font-bold">
-                                              {player.name}
-                                            </span>
-                                          </div>
-
-                                          <strong>
-                                            {prediction?.predicted_home} - {prediction?.predicted_away}
-                                          </strong>
+                                          <span className="font-bold">
+                                            {player.name}
+                                          </span>
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-
-                              <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
-                                <p className="mb-3 font-black text-red-300">
-                                  ❌ Pas encore pronostiqué ({playersMissing.length})
-                                </p>
-
-                                {playersMissing.length === 0 ? (
-                                  <p className="text-sm text-emerald-300">
-                                    Tout le monde a joué 👌
-                                  </p>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {playersMissing.map((player) => (
-                                      <div
-                                        key={player.id}
-                                        className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
-                                      >
-                                        {player.avatar_url ? (
-                                          <img
-                                            src={player.avatar_url}
-                                            alt={player.name}
-                                            loading="lazy"
-                                            decoding="async"
-                                            className="h-8 w-8 rounded-full object-cover"
-                                          />
-                                        ) : (
-                                          <UserCircle className="h-8 w-8 text-slate-300" />
-                                        )}
-
-                                        <span className="font-bold">
-                                          {player.name}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </details>
-                        </div>
-                      );
-                    })}
+                            </details>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </section>
