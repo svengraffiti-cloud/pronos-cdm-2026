@@ -386,6 +386,7 @@ export default function Home() {
   const [teams, setTeams] = useState([]);
   const [newPlayer, setNewPlayer] = useState("");
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [scores, setScores] = useState({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -767,12 +768,13 @@ export default function Home() {
   }
 
   async function loadData(options = {}) {
-    const silent = options.silent || false;
+    const silent = options.silent ?? hasLoadedOnce;
+    const showFullLoader = !silent && !hasLoadedOnce;
 
-    if (silent) {
-      setRefreshing(true);
-    } else {
+    if (showFullLoader) {
       setLoading(true);
+    } else {
+      setRefreshing(true);
     }
 
     try {
@@ -799,27 +801,35 @@ export default function Home() {
             .order("group_name", { ascending: true }),
         ]);
 
+      if (playersResult.error) throw playersResult.error;
+      if (matchesResult.error) throw matchesResult.error;
+      if (predictionsResult.error) throw predictionsResult.error;
+      if (teamsResult.error) throw teamsResult.error;
+
       setPlayers(playersResult.data || []);
       setMatches(matchesResult.data || []);
       setPredictions(predictionsResult.data || []);
       setTeams(teamsResult.data || []);
+      setHasLoadedOnce(true);
     } catch (error) {
       console.error("Erreur chargement données:", error);
     } finally {
-      if (silent) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
+      setRefreshing(false);
     }
   }
 
   async function refreshEverything(userId = session?.user?.id, options = {}) {
     if (!userId) return;
 
+    const refreshOptions = {
+      ...options,
+      silent: options.silent ?? hasLoadedOnce,
+    };
+
     await Promise.all([
       loadProfile(userId),
-      loadData(options),
+      loadData(refreshOptions),
     ]);
   }
 
@@ -857,6 +867,7 @@ export default function Home() {
           setPredictions([]);
           setTeams([]);
           setNotificationsEnabled(false);
+          setHasLoadedOnce(false);
         }
 
         setAuthLoading(false);
@@ -927,8 +938,20 @@ export default function Home() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
+    let refreshTimer = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = setTimeout(() => {
+        refreshEverything(session.user.id, { silent: true });
+      }, 350);
+    };
+
     const channel = supabase
-      .channel("prediction-refresh")
+      .channel("live-data-refresh")
       .on(
         "postgres_changes",
         {
@@ -936,9 +959,7 @@ export default function Home() {
           schema: "public",
           table: "predictions",
         },
-        async () => {
-          await loadData({ silent: true });
-        }
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
@@ -947,16 +968,18 @@ export default function Home() {
           schema: "public",
           table: "matches",
         },
-        async () => {
-          await refreshEverything(session?.user?.id, { silent: true });
-        }
+        scheduleRefresh
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, hasLoadedOnce]);
 
   useEffect(() => {
     const nextScores = {};
@@ -1118,6 +1141,7 @@ export default function Home() {
       setTeams([]);
       setScores({});
       setNotificationsEnabled(false);
+      setHasLoadedOnce(false);
 
       if (typeof window !== "undefined") {
         window.location.href = "/";
@@ -1730,6 +1754,7 @@ export default function Home() {
             ].map((item) => (
               <button
                 key={item.key}
+                type="button"
                 onClick={() => setTab(item.key)}
                 className={`flex h-14 w-14 items-center justify-center rounded-2xl text-2xl transition ${
                   tab === item.key
@@ -1749,7 +1774,7 @@ export default function Home() {
           </div>
         )}
 
-        {loading ? (
+        {loading && !hasLoadedOnce ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/75 p-10 text-center shadow-2xl backdrop-blur-md">
             <AppLogo className="mb-6 h-24 w-24 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
             <Loader2 className="h-10 w-10 animate-spin text-emerald-300" />
