@@ -15,47 +15,6 @@ import {
   Lock,
 } from "lucide-react";
 
-const APP_VERSION = "2026-05-18-points-security-v4";
-const APP_VERSION_STORAGE_KEY = "les-pronos-de-papy-app-version";
-const APP_RELOAD_STORAGE_KEY = `les-pronos-de-papy-reloaded-${APP_VERSION}`;
-
-function formatTechnicalError(error) {
-  if (!error) return "Erreur inconnue.";
-
-  if (typeof error === "string") return error;
-
-  const parts = [
-    error.message,
-    error.details,
-    error.hint,
-    error.code ? `Code: ${error.code}` : "",
-  ].filter(Boolean);
-
-  if (parts.length > 0) {
-    return parts.join(" | ");
-  }
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "Erreur inconnue impossible à afficher.";
-  }
-}
-
-function isScoreFilled(value) {
-  return value !== null && value !== undefined && value !== "";
-}
-
-function normalizeScore(value) {
-  if (!isScoreFilled(value)) return null;
-
-  const score = Number(value);
-
-  if (!Number.isFinite(score) || score < 0) return null;
-
-  return score;
-}
-
 function AppShell({ children }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
@@ -433,6 +392,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
+  const APP_VERSION = "2026-05-19-paris-en-cours-v1";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -574,6 +534,36 @@ export default function Home() {
         )
         .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
     [matches, selectedPastDate, predictions, currentPlayerId]
+  );
+
+  const myCurrentBetMatches = useMemo(
+    () =>
+      matches
+        .filter((match) => {
+          const prediction = getPrediction(match.id);
+
+          if (!prediction) return false;
+
+          const isToday = formatDayKey(match.match_date) === todayKey;
+          const isUnfinished = !isMatchFinished(match);
+
+          return isToday || isUnfinished;
+        })
+        .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
+    [matches, predictions, currentPlayerId, todayKey]
+  );
+
+  const openMatches = useMemo(
+    () =>
+      matches
+        .filter((match) => !isMatchFinished(match))
+        .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
+    [matches]
+  );
+
+  const lockedTodayCount = useMemo(
+    () => todaysMatches.filter((match) => isMatchLocked(match.match_date)).length,
+    [todaysMatches]
   );
 
   const groupStandingsByName = useMemo(() => {
@@ -921,43 +911,6 @@ export default function Home() {
     };
   }, []);
 
-
-  useEffect(() => {
-    async function clearStaleAndroidWebViewCache() {
-      if (typeof window === "undefined") return;
-
-      try {
-        const previousVersion = window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
-
-        if (previousVersion === APP_VERSION) {
-          return;
-        }
-
-        window.localStorage.setItem(APP_VERSION_STORAGE_KEY, APP_VERSION);
-
-        if ("caches" in window) {
-          const cacheNames = await window.caches.keys();
-          await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
-        }
-
-        if (
-          previousVersion &&
-          !window.sessionStorage.getItem(APP_RELOAD_STORAGE_KEY)
-        ) {
-          window.sessionStorage.setItem(APP_RELOAD_STORAGE_KEY, "true");
-
-          const url = new URL(window.location.href);
-          url.searchParams.set("v", APP_VERSION);
-          window.location.replace(url.toString());
-        }
-      } catch (error) {
-        console.error("Erreur nettoyage cache application:", error);
-      }
-    }
-
-    clearStaleAndroidWebViewCache();
-  }, []);
-
   useEffect(() => {
     async function checkNotifications() {
       try {
@@ -1012,6 +965,29 @@ export default function Home() {
     }
 
     checkNotifications();
+  }, []);
+
+  useEffect(() => {
+    async function clearOldAndroidWebCache() {
+      try {
+        if (typeof window === "undefined") return;
+
+        const currentVersion = window.localStorage.getItem("papy_app_version");
+
+        if (currentVersion === APP_VERSION) return;
+
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+        }
+
+        window.localStorage.setItem("papy_app_version", APP_VERSION);
+      } catch (error) {
+        console.error("Nettoyage cache app impossible:", error);
+      }
+    }
+
+    clearOldAndroidWebCache();
   }, []);
 
   useEffect(() => {
@@ -1262,31 +1238,27 @@ export default function Home() {
   }
 
   function calculatePredictionPoints(prediction, match) {
-    const homeScore = normalizeScore(match?.home_score);
-    const awayScore = normalizeScore(match?.away_score);
-
-    if (homeScore === null || awayScore === null) {
+    if (
+      match.home_score === null ||
+      match.away_score === null ||
+      match.home_score === undefined ||
+      match.away_score === undefined
+    ) {
       return 0;
     }
 
-    const predictedHome = normalizeScore(prediction?.predicted_home);
-    const predictedAway = normalizeScore(prediction?.predicted_away);
+    const ph = Number(prediction.predicted_home);
+    const pa = Number(prediction.predicted_away);
+    const rh = Number(match.home_score);
+    const ra = Number(match.away_score);
 
-    if (predictedHome === null || predictedAway === null) {
-      return 0;
-    }
-
-    // Règle officielle :
     // Score exact = 3 points
-    // Bon résultat = +1 point
-    // Bon écart de buts = +1 point
-    // Exemple : prono 2-1 / résultat 1-0 = 2 pts
-    if (predictedHome === homeScore && predictedAway === awayScore) {
+    if (ph === rh && pa === ra) {
       return 3;
     }
 
-    const predictedDiff = predictedHome - predictedAway;
-    const realDiff = homeScore - awayScore;
+    const predictedDiff = ph - pa;
+    const realDiff = rh - ra;
 
     const predictedResult =
       predictedDiff > 0 ? "home" : predictedDiff < 0 ? "away" : "draw";
@@ -1296,10 +1268,12 @@ export default function Home() {
 
     let points = 0;
 
+    // Bon résultat : victoire domicile / nul / victoire extérieur
     if (predictedResult === realResult) {
       points += 1;
     }
 
+    // Bon écart de buts
     if (predictedDiff === realDiff) {
       points += 1;
     }
@@ -1396,26 +1370,16 @@ export default function Home() {
       .eq("match_id", matchId);
 
     if (error) {
-      throw new Error(`Lecture pronostics impossible : ${formatTechnicalError(error)}`);
+      throw error;
     }
 
-    const checkedPredictions = freshPredictions || [];
-
-    const mismatches = checkedPredictions
-      .map((prediction) => {
-        const expectedPoints = calculatePredictionPoints(prediction, officialMatch);
-        const storedPoints = Number(prediction.points || 0);
-
-        return {
-          ...prediction,
-          expectedPoints,
-          storedPoints,
-        };
-      })
-      .filter((prediction) => prediction.storedPoints !== prediction.expectedPoints);
+    const mismatches = (freshPredictions || []).filter((prediction) => {
+      const expectedPoints = calculatePredictionPoints(prediction, officialMatch);
+      return Number(prediction.points || 0) !== expectedPoints;
+    });
 
     return {
-      checked: checkedPredictions.length,
+      checked: freshPredictions?.length || 0,
       mismatches,
     };
   }
@@ -1436,11 +1400,21 @@ export default function Home() {
     const home = scores[matchId]?.officialHome;
     const away = scores[matchId]?.officialAway;
 
-    const newHome = normalizeScore(home);
-    const newAway = normalizeScore(away);
+    if (home === "" || away === "" || home === undefined || away === undefined) {
+      alert("Entre les deux scores officiels avant de valider.");
+      return;
+    }
 
-    if (newHome === null || newAway === null) {
-      alert("Scores invalides : entre deux nombres positifs avant de valider.");
+    const newHome = Number(home);
+    const newAway = Number(away);
+
+    if (
+      Number.isNaN(newHome) ||
+      Number.isNaN(newAway) ||
+      newHome < 0 ||
+      newAway < 0
+    ) {
+      alert("Scores invalides : uniquement des nombres positifs.");
       return;
     }
 
@@ -1456,7 +1430,7 @@ export default function Home() {
     setRefreshing(true);
     setPointsAudit({
       status: "running",
-      message: "Validation du score, recalcul et double vérification Supabase en cours...",
+      message: "Validation du score et double vérification des points en cours...",
     });
 
     try {
@@ -1470,22 +1444,16 @@ export default function Home() {
         .select("id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score")
         .single();
 
-      if (matchError) {
-        throw new Error(`Mise à jour du match impossible : ${formatTechnicalError(matchError)}`);
-      }
+      if (matchError) throw matchError;
 
       const { data: freshPredictions, error: predictionsError } = await supabase
         .from("predictions")
         .select("id, player_id, match_id, predicted_home, predicted_away, points")
         .eq("match_id", matchId);
 
-      if (predictionsError) {
-        throw new Error(`Lecture des pronostics impossible : ${formatTechnicalError(predictionsError)}`);
-      }
+      if (predictionsError) throw predictionsError;
 
-      const relatedPredictions = freshPredictions || [];
-
-      for (const prediction of relatedPredictions) {
+      for (const prediction of freshPredictions || []) {
         const points = calculatePredictionPoints(prediction, updatedMatch);
 
         const { error: updateError } = await supabase
@@ -1493,32 +1461,18 @@ export default function Home() {
           .update({ points })
           .eq("id", prediction.id);
 
-        if (updateError) {
-          throw new Error(
-            `Mise à jour points impossible pour le prono ${prediction.id} : ${formatTechnicalError(updateError)}`
-          );
-        }
+        if (updateError) throw updateError;
       }
 
       const audit = await verifyMatchPoints(matchId, updatedMatch);
 
       if (audit.mismatches.length > 0) {
-        const details = audit.mismatches
-          .slice(0, 5)
-          .map(
-            (item) =>
-              `Prono ${item.id} : enregistré ${item.storedPoints}, attendu ${item.expectedPoints}`
-          )
-          .join(" / ");
-
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${audit.mismatches.length} erreur(s) détectée(s) après recalcul sur ${audit.checked} pronostic(s). ${details}`,
+          message: `Alerte : ${audit.mismatches.length} erreur(s) détectée(s) après recalcul sur ${audit.checked} pronostic(s).`,
         });
 
-        alert(
-          `⚠️ Erreur détectée : les points ne correspondent pas après recalcul. ${details}`
-        );
+        alert("⚠️ Erreur détectée : les points ne correspondent pas après recalcul. Ne publie pas ce résultat.");
         return;
       }
 
@@ -1531,19 +1485,17 @@ export default function Home() {
 
       setPointsAudit({
         status: "success",
-        message: `Score ${newHome}-${newAway} validé. Points vérifiés : ${audit.checked} pronostic(s), 0 erreur.`,
+        message: `Score validé et points vérifiés : ${audit.checked} pronostic(s) contrôlé(s), 0 erreur.`,
       });
     } catch (error) {
-      const message = formatTechnicalError(error);
-
       console.error("Erreur validation score sécurisé:", error);
 
       setPointsAudit({
         status: "error",
-        message,
+        message: error.message || "Erreur pendant la validation sécurisée du score.",
       });
 
-      alert(`Erreur validation sécurisée : ${message}`);
+      alert(`Erreur validation sécurisée : ${error?.message || JSON.stringify(error)}`);
     } finally {
       setRefreshing(false);
     }
@@ -1564,7 +1516,7 @@ export default function Home() {
     setRefreshing(true);
     setPointsAudit({
       status: "running",
-      message: "Audit complet : lecture Supabase, recalcul, écriture, relecture et comparaison...",
+      message: "Recalcul complet et audit des points en cours...",
     });
 
     try {
@@ -1577,30 +1529,16 @@ export default function Home() {
           .select("id, player_id, match_id, predicted_home, predicted_away, points"),
       ]);
 
-      if (matchesResult.error) {
-        throw new Error(`Lecture matchs impossible : ${formatTechnicalError(matchesResult.error)}`);
-      }
-
-      if (predictionsResult.error) {
-        throw new Error(`Lecture pronostics impossible : ${formatTechnicalError(predictionsResult.error)}`);
-      }
+      if (matchesResult.error) throw matchesResult.error;
+      if (predictionsResult.error) throw predictionsResult.error;
 
       const freshMatches = matchesResult.data || [];
       const freshPredictions = predictionsResult.data || [];
-      const matchById = new Map(freshMatches.map((match) => [match.id, match]));
-
-      const orphanPredictions = [];
-      let updatedCount = 0;
-      let skippedCount = 0;
 
       for (const prediction of freshPredictions) {
-        const match = matchById.get(prediction.match_id);
+        const match = freshMatches.find((item) => item.id === prediction.match_id);
 
-        if (!match) {
-          orphanPredictions.push(prediction);
-          skippedCount += 1;
-          continue;
-        }
+        if (!match) continue;
 
         const points = calculatePredictionPoints(prediction, match);
 
@@ -1609,105 +1547,65 @@ export default function Home() {
           .update({ points })
           .eq("id", prediction.id);
 
-        if (updateError) {
-          throw new Error(
-            `Impossible de mettre à jour le prono ${prediction.id} : ${formatTechnicalError(updateError)}`
-          );
-        }
-
-        updatedCount += 1;
+        if (updateError) throw updateError;
       }
 
       const { data: auditPredictions, error: auditError } = await supabase
         .from("predictions")
         .select("id, player_id, match_id, predicted_home, predicted_away, points");
 
-      if (auditError) {
-        throw new Error(`Relecture audit impossible : ${formatTechnicalError(auditError)}`);
-      }
+      if (auditError) throw auditError;
 
-      const mismatches = (auditPredictions || [])
-        .map((prediction) => {
-          const match = matchById.get(prediction.match_id);
+      const orphanPredictions = (auditPredictions || []).filter((prediction) => {
+        return !freshMatches.find((item) => item.id === prediction.match_id);
+      });
 
-          if (!match) {
-            return {
-              ...prediction,
-              orphan: true,
-              expectedPoints: null,
-              storedPoints: Number(prediction.points || 0),
-            };
-          }
+      const mismatches = (auditPredictions || []).filter((prediction) => {
+        const match = freshMatches.find((item) => item.id === prediction.match_id);
 
-          const expectedPoints = calculatePredictionPoints(prediction, match);
-          const storedPoints = Number(prediction.points || 0);
+        if (!match) return false;
 
-          return {
-            ...prediction,
-            orphan: false,
-            expectedPoints,
-            storedPoints,
-          };
-        })
-        .filter(
-          (prediction) =>
-            !prediction.orphan && prediction.storedPoints !== prediction.expectedPoints
-        );
+        const expectedPoints = calculatePredictionPoints(prediction, match);
+        return Number(prediction.points || 0) !== expectedPoints;
+      });
 
       await refreshEverything(session?.user?.id, { silent: true });
 
-      if (mismatches.length > 0) {
-        const details = mismatches
-          .slice(0, 8)
-          .map(
-            (item) =>
-              `Prono ${item.id} : enregistré ${item.storedPoints}, attendu ${item.expectedPoints}`
-          )
-          .join(" / ");
-
+      if (orphanPredictions.length > 0) {
         setPointsAudit({
           status: "error",
-          message: `Audit terminé avec ${mismatches.length} erreur(s). ${details}`,
+          message: `Alerte : ${orphanPredictions.length} pronostic(s) orphelin(s) lié(s) à des matchs supprimés. Nettoyage Supabase nécessaire avant publication.`,
         });
 
-        alert(`⚠️ Audit terminé avec erreurs. ${details}`);
+        alert("⚠️ Audit terminé avec pronostics orphelins. Ne publie pas le classement.");
         return;
       }
 
-      if (orphanPredictions.length > 0) {
-        const details = orphanPredictions
-          .slice(0, 5)
-          .map((item) => `Prono ${item.id} lié à un match supprimé`)
-          .join(" / ");
-
+      if (mismatches.length > 0) {
         setPointsAudit({
-          status: "warning",
-          message: `Points recalculés et cohérents, mais ${orphanPredictions.length} prono(s) orphelin(s) ignoré(s). ${details}`,
+          status: "error",
+          message: `Alerte : ${mismatches.length} erreur(s) détectée(s) après audit complet.`,
         });
 
-        alert(
-          `⚠️ Points cohérents, mais ${orphanPredictions.length} prono(s) sont liés à des matchs supprimés. ${details}`
-        );
+        alert("⚠️ Audit terminé avec erreurs. Ne publie pas le classement.");
         return;
       }
 
       setPointsAudit({
         status: "success",
-        message: `Audit complet validé : ${updatedCount} pronostic(s) recalculé(s), ${skippedCount} ignoré(s), 0 erreur.`,
+        message: `Audit complet validé : ${auditPredictions?.length || 0} pronostic(s) vérifié(s), 0 erreur.`,
       });
 
-      alert("✅ Tous les points ont été recalculés, relus dans Supabase et vérifiés.");
+      alert("✅ Tous les points ont été recalculés et vérifiés.");
     } catch (error) {
-      const message = formatTechnicalError(error);
-
       console.error("Erreur audit complet des points:", error);
 
       setPointsAudit({
         status: "error",
-        message,
+        message: error.message || "Erreur pendant l’audit complet des points.",
       });
 
-      alert(`Erreur audit complet : ${message}`);
+      alert(`Erreur audit complet : ${error?.message || JSON.stringify(error)}`);
     } finally {
       setRefreshing(false);
     }
@@ -2029,7 +1927,7 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-3">
               <Users className="h-7 w-7 text-emerald-300" />
@@ -2049,6 +1947,27 @@ export default function Home() {
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setTab("encours")}
+            className={`rounded-[2rem] border p-6 text-left shadow-xl backdrop-blur-md transition ${
+              tab === "encours"
+                ? "border-emerald-300/40 bg-emerald-400/20"
+                : "border-white/15 bg-[#22123a]/80 hover:bg-emerald-400/10"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🎯</span>
+              <div>
+                <p className="text-sm text-slate-300">Suivi</p>
+                <p className="text-2xl font-black">Mes paris en cours</p>
+                <p className="mt-1 text-xs font-bold text-emerald-200">
+                  {myCurrentBetMatches.length} pari(s) actif(s)
+                </p>
+              </div>
+            </div>
+          </button>
+
           <button
             type="button"
             onClick={() => setTab("jour")}
@@ -2092,6 +2011,18 @@ export default function Home() {
               {
                 key: "pronos",
                 icon: "⚽",
+              },
+              {
+                key: "encours",
+                icon: "🎯",
+              },
+              {
+                key: "jour",
+                icon: "📅",
+              },
+              {
+                key: "historique",
+                icon: "🗂️",
               },
               {
                 key: "classement",
@@ -2181,15 +2112,7 @@ export default function Home() {
                     </div>
 
                     <div className="grid gap-5 md:grid-cols-2">
-                      {matches
-                        .filter(
-                          (match) =>
-                            match.home_score === null ||
-                            match.home_score === undefined ||
-                            match.away_score === null ||
-                            match.away_score === undefined
-                        )
-                        .map((match) => (
+                      {openMatches.map((match) => (
                           <MatchCard
                             key={match.id}
                             match={match}
@@ -2255,6 +2178,58 @@ export default function Home() {
               </section>
             )}
 
+            {tab === "encours" && (
+              <section className="space-y-6">
+                <div className="rounded-[2rem] border border-emerald-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-3">
+                    <span className="text-4xl">🎯</span>
+                    <div>
+                      <h2 className="text-2xl font-black">Mes paris en cours</h2>
+                      <p className="text-sm text-slate-300">
+                        Retrouve ici tes pronos validés, les matchs verrouillés, les scores officiels dès validation admin et tes points. Cette page reste utile toute la journée pour suivre l’évolution.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {myCurrentBetMatches.length === 0 ? (
+                  <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
+                    <p className="text-4xl">🎯</p>
+                    <h3 className="mt-3 text-2xl font-black">Aucun pari en cours</h3>
+                    <p className="mt-2 text-slate-300">
+                      Va dans Paris ouverts ou Mes pronos du jour pour valider tes prochains scores.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTab("jour")}
+                      className="mt-5 rounded-2xl bg-violet-600 px-5 py-3 font-black text-white shadow-xl"
+                    >
+                      Voir les pronos du jour
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {myCurrentBetMatches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        locked={isMatchLocked(match.match_date)}
+                        finished={isMatchFinished(match)}
+                        prediction={getPrediction(match.id)}
+                        matchPredictionRows={getMatchPredictionRows(match.id)}
+                        localScore={scores[match.id] || {}}
+                        currentPlayerId={currentPlayerId}
+                        roundLabels={roundLabels}
+                        formattedDate={formatDate(match.match_date)}
+                        onScoreChange={handlePredictionScoreChange}
+                        onSavePrediction={savePrediction}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
             {tab === "jour" && (
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-yellow-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
@@ -2263,7 +2238,7 @@ export default function Home() {
                     <div>
                       <h2 className="text-2xl font-black">Mes pronos du jour</h2>
                       <p className="text-sm text-slate-300">
-                        Tes matchs du jour restent ici avec tes pronos, les scores officiels et tes points. Demain, cette page affichera automatiquement la nouvelle journée.
+                        Tes matchs du jour restent ici avec tes pronos, les scores officiels et tes points. Verrouillés aujourd’hui : {lockedTodayCount}/{todaysMatches.length}.
                       </p>
                     </div>
                   </div>
