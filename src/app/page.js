@@ -15,6 +15,47 @@ import {
   Lock,
 } from "lucide-react";
 
+const APP_VERSION = "2026-05-18-points-security-v4";
+const APP_VERSION_STORAGE_KEY = "les-pronos-de-papy-app-version";
+const APP_RELOAD_STORAGE_KEY = `les-pronos-de-papy-reloaded-${APP_VERSION}`;
+
+function formatTechnicalError(error) {
+  if (!error) return "Erreur inconnue.";
+
+  if (typeof error === "string") return error;
+
+  const parts = [
+    error.message,
+    error.details,
+    error.hint,
+    error.code ? `Code: ${error.code}` : "",
+  ].filter(Boolean);
+
+  if (parts.length > 0) {
+    return parts.join(" | ");
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Erreur inconnue impossible à afficher.";
+  }
+}
+
+function isScoreFilled(value) {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function normalizeScore(value) {
+  if (!isScoreFilled(value)) return null;
+
+  const score = Number(value);
+
+  if (!Number.isFinite(score) || score < 0) return null;
+
+  return score;
+}
+
 function AppShell({ children }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0b0513] text-white">
@@ -880,6 +921,43 @@ export default function Home() {
     };
   }, []);
 
+
+  useEffect(() => {
+    async function clearStaleAndroidWebViewCache() {
+      if (typeof window === "undefined") return;
+
+      try {
+        const previousVersion = window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
+
+        if (previousVersion === APP_VERSION) {
+          return;
+        }
+
+        window.localStorage.setItem(APP_VERSION_STORAGE_KEY, APP_VERSION);
+
+        if ("caches" in window) {
+          const cacheNames = await window.caches.keys();
+          await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+        }
+
+        if (
+          previousVersion &&
+          !window.sessionStorage.getItem(APP_RELOAD_STORAGE_KEY)
+        ) {
+          window.sessionStorage.setItem(APP_RELOAD_STORAGE_KEY, "true");
+
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", APP_VERSION);
+          window.location.replace(url.toString());
+        }
+      } catch (error) {
+        console.error("Erreur nettoyage cache application:", error);
+      }
+    }
+
+    clearStaleAndroidWebViewCache();
+  }, []);
+
   useEffect(() => {
     async function checkNotifications() {
       try {
@@ -1184,27 +1262,31 @@ export default function Home() {
   }
 
   function calculatePredictionPoints(prediction, match) {
-    if (
-      match.home_score === null ||
-      match.away_score === null ||
-      match.home_score === undefined ||
-      match.away_score === undefined
-    ) {
+    const homeScore = normalizeScore(match?.home_score);
+    const awayScore = normalizeScore(match?.away_score);
+
+    if (homeScore === null || awayScore === null) {
       return 0;
     }
 
-    const ph = Number(prediction.predicted_home);
-    const pa = Number(prediction.predicted_away);
-    const rh = Number(match.home_score);
-    const ra = Number(match.away_score);
+    const predictedHome = normalizeScore(prediction?.predicted_home);
+    const predictedAway = normalizeScore(prediction?.predicted_away);
 
+    if (predictedHome === null || predictedAway === null) {
+      return 0;
+    }
+
+    // Règle officielle :
     // Score exact = 3 points
-    if (ph === rh && pa === ra) {
+    // Bon résultat = +1 point
+    // Bon écart de buts = +1 point
+    // Exemple : prono 2-1 / résultat 1-0 = 2 pts
+    if (predictedHome === homeScore && predictedAway === awayScore) {
       return 3;
     }
 
-    const predictedDiff = ph - pa;
-    const realDiff = rh - ra;
+    const predictedDiff = predictedHome - predictedAway;
+    const realDiff = homeScore - awayScore;
 
     const predictedResult =
       predictedDiff > 0 ? "home" : predictedDiff < 0 ? "away" : "draw";
@@ -1214,12 +1296,10 @@ export default function Home() {
 
     let points = 0;
 
-    // Bon résultat : victoire domicile / nul / victoire extérieur
     if (predictedResult === realResult) {
       points += 1;
     }
 
-    // Bon écart de buts
     if (predictedDiff === realDiff) {
       points += 1;
     }
@@ -1316,16 +1396,26 @@ export default function Home() {
       .eq("match_id", matchId);
 
     if (error) {
-      throw error;
+      throw new Error(`Lecture pronostics impossible : ${formatTechnicalError(error)}`);
     }
 
-    const mismatches = (freshPredictions || []).filter((prediction) => {
-      const expectedPoints = calculatePredictionPoints(prediction, officialMatch);
-      return Number(prediction.points || 0) !== expectedPoints;
-    });
+    const checkedPredictions = freshPredictions || [];
+
+    const mismatches = checkedPredictions
+      .map((prediction) => {
+        const expectedPoints = calculatePredictionPoints(prediction, officialMatch);
+        const storedPoints = Number(prediction.points || 0);
+
+        return {
+          ...prediction,
+          expectedPoints,
+          storedPoints,
+        };
+      })
+      .filter((prediction) => prediction.storedPoints !== prediction.expectedPoints);
 
     return {
-      checked: freshPredictions?.length || 0,
+      checked: checkedPredictions.length,
       mismatches,
     };
   }
@@ -1346,21 +1436,11 @@ export default function Home() {
     const home = scores[matchId]?.officialHome;
     const away = scores[matchId]?.officialAway;
 
-    if (home === "" || away === "" || home === undefined || away === undefined) {
-      alert("Entre les deux scores officiels avant de valider.");
-      return;
-    }
+    const newHome = normalizeScore(home);
+    const newAway = normalizeScore(away);
 
-    const newHome = Number(home);
-    const newAway = Number(away);
-
-    if (
-      Number.isNaN(newHome) ||
-      Number.isNaN(newAway) ||
-      newHome < 0 ||
-      newAway < 0
-    ) {
-      alert("Scores invalides : uniquement des nombres positifs.");
+    if (newHome === null || newAway === null) {
+      alert("Scores invalides : entre deux nombres positifs avant de valider.");
       return;
     }
 
@@ -1376,7 +1456,7 @@ export default function Home() {
     setRefreshing(true);
     setPointsAudit({
       status: "running",
-      message: "Validation du score et double vérification des points en cours...",
+      message: "Validation du score, recalcul et double vérification Supabase en cours...",
     });
 
     try {
@@ -1390,16 +1470,22 @@ export default function Home() {
         .select("id, home_team, away_team, match_date, stage, group_name, knockout_order, home_score, away_score")
         .single();
 
-      if (matchError) throw matchError;
+      if (matchError) {
+        throw new Error(`Mise à jour du match impossible : ${formatTechnicalError(matchError)}`);
+      }
 
       const { data: freshPredictions, error: predictionsError } = await supabase
         .from("predictions")
         .select("id, player_id, match_id, predicted_home, predicted_away, points")
         .eq("match_id", matchId);
 
-      if (predictionsError) throw predictionsError;
+      if (predictionsError) {
+        throw new Error(`Lecture des pronostics impossible : ${formatTechnicalError(predictionsError)}`);
+      }
 
-      for (const prediction of freshPredictions || []) {
+      const relatedPredictions = freshPredictions || [];
+
+      for (const prediction of relatedPredictions) {
         const points = calculatePredictionPoints(prediction, updatedMatch);
 
         const { error: updateError } = await supabase
@@ -1407,18 +1493,32 @@ export default function Home() {
           .update({ points })
           .eq("id", prediction.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          throw new Error(
+            `Mise à jour points impossible pour le prono ${prediction.id} : ${formatTechnicalError(updateError)}`
+          );
+        }
       }
 
       const audit = await verifyMatchPoints(matchId, updatedMatch);
 
       if (audit.mismatches.length > 0) {
+        const details = audit.mismatches
+          .slice(0, 5)
+          .map(
+            (item) =>
+              `Prono ${item.id} : enregistré ${item.storedPoints}, attendu ${item.expectedPoints}`
+          )
+          .join(" / ");
+
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${audit.mismatches.length} erreur(s) détectée(s) après recalcul sur ${audit.checked} pronostic(s).`,
+          message: `Alerte : ${audit.mismatches.length} erreur(s) détectée(s) après recalcul sur ${audit.checked} pronostic(s). ${details}`,
         });
 
-        alert("⚠️ Erreur détectée : les points ne correspondent pas après recalcul. Ne publie pas ce résultat.");
+        alert(
+          `⚠️ Erreur détectée : les points ne correspondent pas après recalcul. ${details}`
+        );
         return;
       }
 
@@ -1431,17 +1531,19 @@ export default function Home() {
 
       setPointsAudit({
         status: "success",
-        message: `Score validé et points vérifiés : ${audit.checked} pronostic(s) contrôlé(s), 0 erreur.`,
+        message: `Score ${newHome}-${newAway} validé. Points vérifiés : ${audit.checked} pronostic(s), 0 erreur.`,
       });
     } catch (error) {
+      const message = formatTechnicalError(error);
+
       console.error("Erreur validation score sécurisé:", error);
 
       setPointsAudit({
         status: "error",
-        message: error.message || "Erreur pendant la validation sécurisée du score.",
+        message,
       });
 
-      alert("Erreur pendant la validation sécurisée du score.");
+      alert(`Erreur validation sécurisée : ${message}`);
     } finally {
       setRefreshing(false);
     }
@@ -1462,7 +1564,7 @@ export default function Home() {
     setRefreshing(true);
     setPointsAudit({
       status: "running",
-      message: "Recalcul complet et audit des points en cours...",
+      message: "Audit complet : lecture Supabase, recalcul, écriture, relecture et comparaison...",
     });
 
     try {
@@ -1475,16 +1577,30 @@ export default function Home() {
           .select("id, player_id, match_id, predicted_home, predicted_away, points"),
       ]);
 
-      if (matchesResult.error) throw matchesResult.error;
-      if (predictionsResult.error) throw predictionsResult.error;
+      if (matchesResult.error) {
+        throw new Error(`Lecture matchs impossible : ${formatTechnicalError(matchesResult.error)}`);
+      }
+
+      if (predictionsResult.error) {
+        throw new Error(`Lecture pronostics impossible : ${formatTechnicalError(predictionsResult.error)}`);
+      }
 
       const freshMatches = matchesResult.data || [];
       const freshPredictions = predictionsResult.data || [];
+      const matchById = new Map(freshMatches.map((match) => [match.id, match]));
+
+      const orphanPredictions = [];
+      let updatedCount = 0;
+      let skippedCount = 0;
 
       for (const prediction of freshPredictions) {
-        const match = freshMatches.find((item) => item.id === prediction.match_id);
+        const match = matchById.get(prediction.match_id);
 
-        if (!match) continue;
+        if (!match) {
+          orphanPredictions.push(prediction);
+          skippedCount += 1;
+          continue;
+        }
 
         const points = calculatePredictionPoints(prediction, match);
 
@@ -1493,51 +1609,105 @@ export default function Home() {
           .update({ points })
           .eq("id", prediction.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          throw new Error(
+            `Impossible de mettre à jour le prono ${prediction.id} : ${formatTechnicalError(updateError)}`
+          );
+        }
+
+        updatedCount += 1;
       }
 
       const { data: auditPredictions, error: auditError } = await supabase
         .from("predictions")
         .select("id, player_id, match_id, predicted_home, predicted_away, points");
 
-      if (auditError) throw auditError;
+      if (auditError) {
+        throw new Error(`Relecture audit impossible : ${formatTechnicalError(auditError)}`);
+      }
 
-      const mismatches = (auditPredictions || []).filter((prediction) => {
-        const match = freshMatches.find((item) => item.id === prediction.match_id);
+      const mismatches = (auditPredictions || [])
+        .map((prediction) => {
+          const match = matchById.get(prediction.match_id);
 
-        if (!match) return false;
+          if (!match) {
+            return {
+              ...prediction,
+              orphan: true,
+              expectedPoints: null,
+              storedPoints: Number(prediction.points || 0),
+            };
+          }
 
-        const expectedPoints = calculatePredictionPoints(prediction, match);
-        return Number(prediction.points || 0) !== expectedPoints;
-      });
+          const expectedPoints = calculatePredictionPoints(prediction, match);
+          const storedPoints = Number(prediction.points || 0);
+
+          return {
+            ...prediction,
+            orphan: false,
+            expectedPoints,
+            storedPoints,
+          };
+        })
+        .filter(
+          (prediction) =>
+            !prediction.orphan && prediction.storedPoints !== prediction.expectedPoints
+        );
 
       await refreshEverything(session?.user?.id, { silent: true });
 
       if (mismatches.length > 0) {
+        const details = mismatches
+          .slice(0, 8)
+          .map(
+            (item) =>
+              `Prono ${item.id} : enregistré ${item.storedPoints}, attendu ${item.expectedPoints}`
+          )
+          .join(" / ");
+
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${mismatches.length} erreur(s) détectée(s) après audit complet.`,
+          message: `Audit terminé avec ${mismatches.length} erreur(s). ${details}`,
         });
 
-        alert("⚠️ Audit terminé avec erreurs. Ne publie pas le classement.");
+        alert(`⚠️ Audit terminé avec erreurs. ${details}`);
+        return;
+      }
+
+      if (orphanPredictions.length > 0) {
+        const details = orphanPredictions
+          .slice(0, 5)
+          .map((item) => `Prono ${item.id} lié à un match supprimé`)
+          .join(" / ");
+
+        setPointsAudit({
+          status: "warning",
+          message: `Points recalculés et cohérents, mais ${orphanPredictions.length} prono(s) orphelin(s) ignoré(s). ${details}`,
+        });
+
+        alert(
+          `⚠️ Points cohérents, mais ${orphanPredictions.length} prono(s) sont liés à des matchs supprimés. ${details}`
+        );
         return;
       }
 
       setPointsAudit({
         status: "success",
-        message: `Audit complet validé : ${auditPredictions?.length || 0} pronostic(s) vérifié(s), 0 erreur.`,
+        message: `Audit complet validé : ${updatedCount} pronostic(s) recalculé(s), ${skippedCount} ignoré(s), 0 erreur.`,
       });
 
-      alert("✅ Tous les points ont été recalculés et vérifiés.");
+      alert("✅ Tous les points ont été recalculés, relus dans Supabase et vérifiés.");
     } catch (error) {
+      const message = formatTechnicalError(error);
+
       console.error("Erreur audit complet des points:", error);
 
       setPointsAudit({
         status: "error",
-        message: error.message || "Erreur pendant l’audit complet des points.",
+        message,
       });
 
-      alert("Erreur pendant l’audit complet des points.");
+      alert(`Erreur audit complet : ${message}`);
     } finally {
       setRefreshing(false);
     }
