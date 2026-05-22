@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Component, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   Trophy,
@@ -360,7 +360,61 @@ const MatchCard = memo(function MatchCard({
   );
 });
 
-export default function Home() {
+
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+
+  static getDerivedStateFromError(error) {
+    return {
+      hasError: true,
+      message: error?.message || "Erreur inattendue.",
+    };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("Erreur interface principale:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <AppShell>
+          <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-6">
+            <div className="w-full max-w-xl rounded-[2rem] border border-red-300/20 bg-[#12091f]/85 p-8 text-center shadow-2xl backdrop-blur-md">
+              <AppLogo className="mx-auto mb-5 h-28 w-28 rounded-3xl object-contain ring-4 ring-emerald-300/30" />
+              <h1 className="text-3xl font-black">Les Pronos de Papy</h1>
+              <p className="mt-3 text-slate-200">
+                Une erreur temporaire a été détectée pendant le chargement.
+              </p>
+              <p className="mt-2 rounded-2xl bg-red-500/10 p-3 text-sm font-bold text-red-200">
+                {this.state.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.location.reload();
+                  }
+                }}
+                className="mt-6 rounded-2xl bg-violet-600 px-5 py-4 font-black text-white shadow-xl"
+              >
+                Recharger l'application
+              </button>
+            </div>
+          </div>
+        </AppShell>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+
+function HomeContent() {
   const [session, setSession] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -368,7 +422,7 @@ export default function Home() {
   const [inviteAccessCode, setInviteAccessCode] = useState("");
   const [authName, setAuthName] = useState("");
   const [authAvatarFile, setAuthAvatarFile] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
 
   const [profile, setProfile] = useState(null);
@@ -2777,5 +2831,13 @@ export default function Home() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function Home() {
+  return (
+    <AppErrorBoundary>
+      <HomeContent />
+    </AppErrorBoundary>
   );
 }
