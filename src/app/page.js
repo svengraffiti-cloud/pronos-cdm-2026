@@ -871,42 +871,91 @@ export default function Home() {
   }, [pastPredictionDateOptions, selectedPastDate]);
 
   useEffect(() => {
-    async function initAuth() {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session || null);
+    let isMounted = true;
 
-      if (data.session?.user?.id) {
-        await refreshEverything(data.session.user.id);
-      }
-
+    const unlockApp = () => {
+      if (!isMounted) return;
       setAuthLoading(false);
+      setLoading(false);
+      setRefreshing(false);
+    };
+
+    const safetyTimer = setTimeout(() => {
+      console.warn("Déblocage sécurité : chargement initial trop long.");
+      unlockApp();
+    }, 8000);
+
+    async function initAuth() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("Erreur récupération session:", error);
+          if (isMounted) {
+            setSession(null);
+          }
+          return;
+        }
+
+        if (!isMounted) return;
+
+        const currentSession = data?.session || null;
+        setSession(currentSession);
+
+        if (currentSession?.user?.id) {
+          await Promise.race([
+            refreshEverything(currentSession.user.id),
+            new Promise((resolve) => setTimeout(resolve, 7000)),
+          ]);
+        }
+      } catch (error) {
+        console.error("Erreur init auth:", error);
+        if (isMounted) {
+          setSession(null);
+        }
+      } finally {
+        unlockApp();
+      }
     }
 
     initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, nextSession) => {
-        setSession(nextSession || null);
+        try {
+          if (!isMounted) return;
 
-        if (nextSession?.user?.id) {
-          await refreshEverything(nextSession.user.id);
-        } else {
-          setProfile(null);
-          setCurrentPlayer(null);
-          setPlayers([]);
-          setMatches([]);
-          setPredictions([]);
-          setTeams([]);
-          setNotificationsEnabled(false);
-          setHasLoadedOnce(false);
+          setSession(nextSession || null);
+
+          if (nextSession?.user?.id) {
+            setAuthLoading(true);
+
+            await Promise.race([
+              refreshEverything(nextSession.user.id),
+              new Promise((resolve) => setTimeout(resolve, 7000)),
+            ]);
+          } else {
+            setProfile(null);
+            setCurrentPlayer(null);
+            setPlayers([]);
+            setMatches([]);
+            setPredictions([]);
+            setTeams([]);
+            setNotificationsEnabled(false);
+            setHasLoadedOnce(false);
+          }
+        } catch (error) {
+          console.error("Erreur changement session:", error);
+        } finally {
+          unlockApp();
         }
-
-        setAuthLoading(false);
       }
     );
 
     return () => {
-      listener.subscription.unsubscribe();
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      listener?.subscription?.unsubscribe?.();
     };
   }, []);
 
