@@ -10,7 +10,6 @@ import {
   Loader2,
   Bell,
   LogOut,
-  Camera,
   UserCircle,
   Lock,
 } from "lucide-react";
@@ -1712,18 +1711,9 @@ export default function Home() {
                     className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                   />
 
-                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                    <Camera className="h-5 w-5 text-emerald-300" />
-                    <span className="flex-1 text-sm text-slate-200">
-                      {authAvatarFile ? authAvatarFile.name : "Ajouter une photo de profil"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => setAuthAvatarFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
+                  <p className="rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-200 ring-1 ring-white/10">
+                    Photo de profil désactivée temporairement pour garantir la stabilité iPad pendant la vérification Apple.
+                  </p>
 
                   <input
                     value={inviteAccessCode}
@@ -1805,18 +1795,9 @@ export default function Home() {
                 className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
               />
 
-              <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                <Camera className="h-5 w-5 text-emerald-300" />
-                <span className="flex-1 text-sm text-slate-200">
-                  {profileAvatarFile ? profileAvatarFile.name : "Ajouter une photo de profil"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setProfileAvatarFile(e.target.files?.[0] || null)}
-                />
-              </label>
+              <p className="rounded-2xl bg-white/5 p-4 text-sm font-bold text-slate-200 ring-1 ring-white/10">
+                Photo de profil désactivée temporairement pour garantir la stabilité iPad pendant la vérification Apple.
+              </p>
 
               {authError && (
                 <p className="rounded-2xl bg-red-500/20 p-3 text-sm font-bold text-red-200">
