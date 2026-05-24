@@ -1217,20 +1217,17 @@ export default function Home() {
       return;
     }
 
-    const firstConfirmation = window.confirm(
-      "Voulez-vous vraiment supprimer votre compte Les Pronos de Papy ? Cette action est définitive."
+    const confirmDelete = window.confirm(
+      "Voulez-vous vraiment supprimer votre compte ? Cette action est définitive."
     );
 
-    if (!firstConfirmation) return;
+    if (!confirmDelete) return;
 
-    const typedConfirmation = window.prompt(
-      "Pour confirmer la suppression définitive, tapez SUPPRIMER en majuscules."
+    const finalConfirm = window.confirm(
+      "Confirmation finale : votre profil, vos pronostics et vos données liées seront supprimés. Continuer ?"
     );
 
-    if (typedConfirmation !== "SUPPRIMER") {
-      alert("Suppression annulée.");
-      return;
-    }
+    if (!finalConfirm) return;
 
     setDeletingAccount(true);
     setRefreshing(true);
@@ -1278,13 +1275,14 @@ export default function Home() {
       setHasLoadedOnce(false);
 
       alert("Votre compte et vos données associées ont été supprimés.");
+
       if (typeof window !== "undefined") {
         window.location.href = "/";
       }
     } catch (error) {
       console.error("Erreur suppression compte:", error);
       alert(
-        "Impossible de supprimer le compte automatiquement. Réessayez ou contactez le support : contact@lespronosdepapy.com"
+        "Impossible de supprimer le compte automatiquement. Contactez le support : contact@lespronosdepapy.com"
       );
     } finally {
       setDeletingAccount(false);
