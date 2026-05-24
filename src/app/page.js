@@ -396,7 +396,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-v2";
+  const APP_VERSION = "2026-05-24-delete-account-v3-red-button-header";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -2014,28 +2014,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-5 w-full max-w-md rounded-[2rem] border border-red-300/20 bg-red-950/25 p-4 ring-1 ring-red-300/10">
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-red-200">
-                Zone de danger
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteConfirmText("");
-                  setShowDeleteAccountModal(true);
-                }}
-                disabled={deleteLoading}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-4 font-black text-white shadow-xl shadow-red-950/40 ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:opacity-50"
-              >
-                <Trash2 className="h-5 w-5" />
-                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
-              </button>
-
-              <p className="mt-3 text-xs font-bold text-red-100/80">
-                Sécurité activée : double confirmation + saisie obligatoire du mot SUPPRIMER.
-              </p>
-            </div>
 
             <p className="mt-3 max-w-2xl text-lg text-slate-200">
               Ton espace pronos sécurisé. Les pronos des autres apparaissent uniquement après fermeture des paris.
