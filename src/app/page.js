@@ -1623,6 +1623,106 @@ export default function Home() {
     }
   }
 
+  async function clearOfficialScore(matchId) {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
+    const match = matches.find((item) => item.id === matchId);
+
+    if (!match) {
+      alert("Match introuvable.");
+      return;
+    }
+
+    const hasOfficialScore =
+      match.home_score !== null &&
+      match.home_score !== undefined &&
+      match.away_score !== null &&
+      match.away_score !== undefined;
+
+    if (!hasOfficialScore) {
+      setScores((prev) => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          officialHome: "",
+          officialAway: "",
+        },
+      }));
+      alert("Aucun score officiel enregistré pour ce match.");
+      return;
+    }
+
+    const confirmation = window.confirm(
+      `Effacer le score officiel de ${match.home_team} - ${match.away_team} ?`
+    );
+
+    if (!confirmation) return;
+
+    const finalConfirmation = window.confirm(
+      "Confirmation finale : le match repassera en non terminé et les points liés à ce match seront remis à 0."
+    );
+
+    if (!finalConfirmation) return;
+
+    setRefreshing(true);
+    setPointsAudit({
+      status: "running",
+      message: "Effacement du score officiel en cours...",
+    });
+
+    try {
+      const { error: matchError } = await supabase
+        .from("matches")
+        .update({
+          home_score: null,
+          away_score: null,
+        })
+        .eq("id", matchId);
+
+      if (matchError) throw matchError;
+
+      const { error: predictionsError } = await supabase
+        .from("predictions")
+        .update({ points: 0 })
+        .eq("match_id", matchId);
+
+      if (predictionsError) throw predictionsError;
+
+      setScores((prev) => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          officialHome: "",
+          officialAway: "",
+        },
+      }));
+
+      setSavedMatches((prev) => ({
+        ...prev,
+        [matchId]: false,
+      }));
+
+      await refreshEverything(session?.user?.id, { silent: true });
+
+      setPointsAudit({
+        status: "success",
+        message: "Score officiel effacé et points remis à 0 pour ce match.",
+      });
+    } catch (error) {
+      console.error("Erreur effacement score officiel:", error);
+      setPointsAudit({
+        status: "error",
+        message: error.message || "Erreur pendant l’effacement du score officiel.",
+      });
+      alert(error?.message || "Erreur pendant l’effacement du score officiel.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function recalculateAndVerifyAllPoints() {
     if (!isAdmin) {
       alert("Accès admin requis.");
@@ -2771,6 +2871,15 @@ export default function Home() {
                               {savedMatches[match.id]
                                 ? "✅ Vérifié"
                                 : "Valider + vérifier"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => clearOfficialScore(match.id)}
+                              disabled={refreshing}
+                              className="rounded-2xl bg-red-600 px-4 py-3 font-black text-white transition hover:bg-red-500 disabled:opacity-60"
+                            >
+                              🧹 Effacer score
                             </button>
                           </div>
 
