@@ -408,6 +408,11 @@ export default function Home() {
 
   const isAdmin = profile?.role === "admin";
   const currentPlayerId = profile?.player_id;
+  function formatDayKey(date) {
+  return new Date(date).toLocaleDateString("fr-CA");
+}
+
+
 
   const groupNames = useMemo(
     () => [...new Set(teams.map((team) => team.group_name))],
