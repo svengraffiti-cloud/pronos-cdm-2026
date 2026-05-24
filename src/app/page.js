@@ -2889,6 +2889,34 @@ export default function Home() {
             )}
           </>
         )}
+
+        <footer className="rounded-[2rem] border border-white/15 bg-[#12091f]/80 p-5 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col gap-3 text-sm font-bold text-slate-300 md:flex-row md:items-center md:justify-center">
+            <a
+              href="/contact"
+              className="rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
+            >
+              Support
+            </a>
+
+            <a
+              href="/privacy"
+              className="rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
+            >
+              Confidentialité
+            </a>
+
+            <button
+              type="button"
+              onClick={deleteMyAccount}
+              disabled={deleteLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
+            >
+              <Trash2 className="h-5 w-5" />
+              {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
+            </button>
+          </div>
+        </footer>
       </div>
     </AppShell>
   );
