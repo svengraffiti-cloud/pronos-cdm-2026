@@ -394,7 +394,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-v1";
+  const APP_VERSION = "2026-05-24-delete-account-v2";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -1150,16 +1150,43 @@ export default function Home() {
     setAuthError("");
 
     try {
+      const userId = session.user.id;
+      const cleanName = profileName.trim() || session.user.email?.split("@")[0] || "Joueur";
       let avatarUrl = null;
 
       if (profileAvatarFile) {
-        avatarUrl = await uploadAvatar(profileAvatarFile, session.user.id);
+        avatarUrl = await uploadAvatar(profileAvatarFile, userId);
+      }
+
+      const { data: existingProfile, error: existingProfileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (existingProfileError) throw existingProfileError;
+
+      if (existingProfile?.player_id) {
+        const { data: existingPlayer, error: existingPlayerError } = await supabase
+          .from("players")
+          .select("*")
+          .eq("id", existingProfile.player_id)
+          .maybeSingle();
+
+        if (existingPlayerError) throw existingPlayerError;
+
+        if (existingPlayer) {
+          setProfile(existingProfile);
+          setCurrentPlayer(existingPlayer);
+          await refreshEverything(userId, { silent: true });
+          return;
+        }
       }
 
       const { data: playerData, error: playerError } = await supabase
         .from("players")
         .insert({
-          name: profileName.trim() || session.user.email?.split("@")[0] || "Joueur",
+          name: cleanName,
           avatar_url: avatarUrl,
         })
         .select("*")
@@ -1167,16 +1194,23 @@ export default function Home() {
 
       if (playerError) throw playerError;
 
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: session.user.id,
+      const profilePayload = {
+        id: userId,
         player_id: playerData.id,
-        role: "player",
-      });
+        role: existingProfile?.role || "player",
+      };
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" });
 
       if (profileError) throw profileError;
 
-      await refreshEverything(session.user.id);
+      setProfile(profilePayload);
+      setCurrentPlayer(playerData);
+      await refreshEverything(userId, { silent: true });
     } catch (error) {
+      console.error("Erreur création/réparation profil:", error);
       setAuthError(error.message || "Erreur de création du profil.");
     } finally {
       setCreatingProfile(false);
@@ -1258,6 +1292,17 @@ export default function Home() {
         });
       } catch (metadataError) {
         console.warn("Marquage suppression compte impossible:", metadataError);
+      }
+
+      try {
+        await fetch("/api/delete-account", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (apiDeleteError) {
+        console.warn("Suppression Auth via API indisponible, données utilisateur déjà supprimées:", apiDeleteError);
       }
 
       await supabase.auth.signOut();
