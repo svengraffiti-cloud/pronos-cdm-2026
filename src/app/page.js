@@ -2760,106 +2760,18 @@ export default function Home() {
                               className="w-20 rounded-2xl bg-slate-950 p-3 text-center outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                             />
 
-                            <div className="flex flex-wrap gap-3">
-                              <button
-                                onClick={() => saveOfficialScore(match.id)}
-                                className={`rounded-2xl px-4 py-3 font-black transition ${
-                                  savedMatches[match.id]
-                                    ? "bg-yellow-400 text-black"
-                                    : "bg-emerald-600 text-white"
-                                }`}
-                              >
-                                {savedMatches[match.id]
-                                  ? "✅ Vérifié"
-                                  : "Valider + vérifier"}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!isAdmin) {
-                                    alert("Accès admin requis.");
-                                    return;
-                                  }
-
-                                  const confirmation = window.confirm(
-                                    "Effacer complètement le score officiel de ce match et remettre les points des pronostics à 0 ?"
-                                  );
-
-                                  if (!confirmation) return;
-
-                                  const finalConfirmation = window.confirm(
-                                    "Confirmation finale : le match redeviendra non terminé et disparaîtra des matchs terminés. Continuer ?"
-                                  );
-
-                                  if (!finalConfirmation) return;
-
-                                  try {
-                                    setRefreshing(true);
-                                    setPointsAudit({
-                                      status: "running",
-                                      message: "Effacement du score officiel et remise à zéro des points...",
-                                    });
-
-                                    const { error: matchError } = await supabase
-                                      .from("matches")
-                                      .update({
-                                        home_score: null,
-                                        away_score: null,
-                                      })
-                                      .eq("id", match.id);
-
-                                    if (matchError) throw matchError;
-
-                                    const { error: predictionsError } = await supabase
-                                      .from("predictions")
-                                      .update({ points: 0 })
-                                      .eq("match_id", match.id);
-
-                                    if (predictionsError) throw predictionsError;
-
-                                    setScores((prev) => ({
-                                      ...prev,
-                                      [match.id]: {
-                                        ...prev[match.id],
-                                        officialHome: "",
-                                        officialAway: "",
-                                      },
-                                    }));
-
-                                    setSavedMatches((prev) => ({
-                                      ...prev,
-                                      [match.id]: false,
-                                    }));
-
-                                    await refreshEverything(session?.user?.id, { silent: true });
-
-                                    setPointsAudit({
-                                      status: "success",
-                                      message: "Score officiel effacé et points remis à 0 pour ce match.",
-                                    });
-                                  } catch (error) {
-                                    console.error("Erreur effacement score officiel:", error);
-                                    setPointsAudit({
-                                      status: "error",
-                                      message:
-                                        error.message ||
-                                        "Erreur pendant l’effacement du score officiel.",
-                                    });
-                                    alert(
-                                      error?.message ||
-                                        "Erreur pendant l’effacement du score officiel."
-                                    );
-                                  } finally {
-                                    setRefreshing(false);
-                                  }
-                                }}
-                                disabled={refreshing}
-                                className="rounded-2xl bg-red-600 px-4 py-3 font-black text-white transition hover:bg-red-500 disabled:opacity-60"
-                              >
-                                🧹 Effacer score
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => saveOfficialScore(match.id)}
+                              className={`rounded-2xl px-4 py-3 font-black transition ${
+                                savedMatches[match.id]
+                                  ? "bg-yellow-400 text-black"
+                                  : "bg-emerald-600 text-white"
+                              }`}
+                            >
+                              {savedMatches[match.id]
+                                ? "✅ Vérifié"
+                                : "Valider + vérifier"}
+                            </button>
                           </div>
 
                           <details className="mt-4 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
