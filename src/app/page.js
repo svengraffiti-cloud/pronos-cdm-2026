@@ -389,11 +389,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [scores, setScores] = useState({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const [deletingAccount, setDeletingAccount] = useState(false);
   const APP_VERSION = "2026-05-19-paris-en-cours-v1";
 
   const roundLabels = {
@@ -1211,54 +1211,53 @@ export default function Home() {
     }
   }
 
-  async function deleteAccount() {
-    if (!session?.user?.id) {
-      alert("Aucun compte connecté.");
-      return;
-    }
+  async function deleteMyAccount() {
+    if (deleteLoading) return;
 
-    const confirmDelete = window.confirm(
-      "Voulez-vous vraiment supprimer votre compte ? Cette action est définitive."
+    const firstConfirmation = window.confirm(
+      "Supprimer définitivement ton compte ? Cette action efface ton profil et tes pronostics."
     );
 
-    if (!confirmDelete) return;
+    if (!firstConfirmation) return;
 
-    const finalConfirm = window.confirm(
-      "Confirmation finale : votre profil, vos pronostics et vos données liées seront supprimés. Continuer ?"
+    const secondConfirmation = window.confirm(
+      "Dernière confirmation : cette suppression est définitive. Continuer ?"
     );
 
-    if (!finalConfirm) return;
+    if (!secondConfirmation) return;
 
-    setDeletingAccount(true);
+    setDeleteLoading(true);
     setRefreshing(true);
 
     try {
-      const userId = session.user.id;
-      const playerId = currentPlayerId || profile?.player_id || null;
+      const { data: userResult, error: userError } = await supabase.auth.getUser();
 
-      if (playerId) {
-        const { error: predictionsError } = await supabase
-          .from("predictions")
-          .delete()
-          .eq("player_id", playerId);
+      if (userError) throw userError;
 
-        if (predictionsError) throw predictionsError;
+      const user = userResult?.user;
+
+      if (!user?.id) {
+        throw new Error("Aucun utilisateur connecté.");
       }
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (profileError) throw profileError;
+      const playerId = profile?.player_id || currentPlayer?.id;
 
       if (playerId) {
-        const { error: playerError } = await supabase
-          .from("players")
-          .delete()
-          .eq("id", playerId);
+        await supabase.from("predictions").delete().eq("player_id", playerId);
+        await supabase.from("players").delete().eq("id", playerId);
+      }
 
-        if (playerError) throw playerError;
+      await supabase.from("profiles").delete().eq("id", user.id);
+
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            account_deleted: true,
+            account_deleted_at: new Date().toISOString(),
+          },
+        });
+      } catch (metadataError) {
+        console.warn("Marquage suppression compte impossible:", metadataError);
       }
 
       await supabase.auth.signOut();
@@ -1274,7 +1273,7 @@ export default function Home() {
       setNotificationsEnabled(false);
       setHasLoadedOnce(false);
 
-      alert("Votre compte et vos données associées ont été supprimés.");
+      alert("Ton compte et tes données utilisateur ont été supprimés.");
 
       if (typeof window !== "undefined") {
         window.location.href = "/";
@@ -1282,10 +1281,11 @@ export default function Home() {
     } catch (error) {
       console.error("Erreur suppression compte:", error);
       alert(
-        "Impossible de supprimer le compte automatiquement. Contactez le support : contact@lespronosdepapy.com"
+        error?.message ||
+          "Erreur pendant la suppression du compte. Réessaie dans quelques instants."
       );
     } finally {
-      setDeletingAccount(false);
+      setDeleteLoading(false);
       setRefreshing(false);
     }
   }
@@ -1919,14 +1919,14 @@ export default function Home() {
               >
                 Déconnexion
               </button>
-
               <button
                 type="button"
-                onClick={deleteAccount}
-                disabled={deletingAccount}
-                className="w-full rounded-2xl bg-red-600/80 px-5 py-4 font-black text-white disabled:opacity-60"
+                onClick={deleteMyAccount}
+                disabled={deleteLoading}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-5 py-4 font-black text-white shadow-xl shadow-red-950/30 disabled:opacity-50"
               >
-                {deletingAccount ? "Suppression..." : "Supprimer mon compte"}
+                <Trash2 className="h-5 w-5" />
+                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
               </button>
             </form>
           </div>
@@ -2013,14 +2013,14 @@ export default function Home() {
                 <LogOut className="h-5 w-5" />
                 Déconnexion
               </button>
-
               <button
-                onClick={deleteAccount}
-                disabled={deletingAccount}
-                className="inline-flex items-center gap-2 rounded-2xl bg-red-600/80 px-5 py-3 font-black text-white ring-1 ring-red-300/30 transition hover:bg-red-600 disabled:opacity-60"
+                type="button"
+                onClick={deleteMyAccount}
+                disabled={deleteLoading}
+                className="inline-flex items-center gap-2 rounded-2xl bg-red-600/80 px-5 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
               >
                 <Trash2 className="h-5 w-5" />
-                {deletingAccount ? "Suppression..." : "Supprimer mon compte"}
+                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
               </button>
             </div>
           </div>
