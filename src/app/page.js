@@ -100,11 +100,20 @@ const MatchCard = memo(function MatchCard({
         date: match.match_date || "",
       });
 
-      const response = await fetch(`/api/match-trend?${params.toString()}`);
+      const response = await fetch(`/api/match-trend?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
       const result = await response.json().catch(() => null);
 
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.error || "Tendance indisponible.");
+        throw new Error(
+          result?.error ||
+            "Tendance indisponible. Vérifie la route /api/match-trend et la clé API-Football côté serveur."
+        );
       }
 
       setTrendData(result);
@@ -394,7 +403,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-v2";
+  const APP_VERSION = "2026-05-24-admin-delete-trends-v3";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -1295,11 +1304,16 @@ export default function Home() {
       }
 
       try {
+        const { data: sessionResult } = await supabase.auth.getSession();
+        const accessToken = sessionResult?.session?.access_token;
+
         await fetch("/api/delete-account", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
+          body: JSON.stringify({ userId: user.id }),
         });
       } catch (apiDeleteError) {
         console.warn("Suppression Auth via API indisponible, données utilisateur déjà supprimées:", apiDeleteError);
@@ -1732,6 +1746,134 @@ export default function Home() {
       });
 
       alert(`Erreur audit complet : ${error?.message || JSON.stringify(error)}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function clearMatchOfficialResult(matchId) {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
+    const match = matches.find((item) => item.id === matchId);
+
+    if (!match) {
+      alert("Match introuvable.");
+      return;
+    }
+
+    const confirmation = window.confirm(
+      `Effacer le résultat officiel de ${match.home_team} - ${match.away_team} et remettre les points de ce match à zéro ?`
+    );
+
+    if (!confirmation) return;
+
+    setRefreshing(true);
+    setPointsAudit({
+      status: "running",
+      message: "Suppression du résultat et remise à zéro des points du match...",
+    });
+
+    try {
+      const { error: matchError } = await supabase
+        .from("matches")
+        .update({
+          home_score: null,
+          away_score: null,
+        })
+        .eq("id", matchId);
+
+      if (matchError) throw matchError;
+
+      const { error: predictionsError } = await supabase
+        .from("predictions")
+        .update({ points: 0 })
+        .eq("match_id", matchId);
+
+      if (predictionsError) throw predictionsError;
+
+      await refreshEverything(session?.user?.id, { silent: true });
+
+      setSavedMatches((prev) => {
+        const next = { ...prev };
+        delete next[matchId];
+        return next;
+      });
+
+      setPointsAudit({
+        status: "success",
+        message: "Résultat supprimé proprement et points du match remis à zéro.",
+      });
+    } catch (error) {
+      console.error("Erreur suppression résultat:", error);
+      setPointsAudit({
+        status: "error",
+        message: error.message || "Erreur pendant la suppression du résultat.",
+      });
+      alert(`Erreur suppression résultat : ${error?.message || JSON.stringify(error)}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function clearAllOfficialResults() {
+    if (!isAdmin) {
+      alert("Accès admin requis.");
+      return;
+    }
+
+    const confirmation = window.confirm(
+      "Effacer TOUS les résultats officiels et remettre TOUS les points à zéro ? Cette action ne supprime pas les joueurs ni les pronostics."
+    );
+
+    if (!confirmation) return;
+
+    const secondConfirmation = window.confirm(
+      "Dernière confirmation : tous les scores officiels seront vidés. Continuer ?"
+    );
+
+    if (!secondConfirmation) return;
+
+    setRefreshing(true);
+    setPointsAudit({
+      status: "running",
+      message: "Suppression de tous les résultats et remise à zéro des points...",
+    });
+
+    try {
+      const { error: matchesError } = await supabase
+        .from("matches")
+        .update({
+          home_score: null,
+          away_score: null,
+        })
+        .not("id", "is", null);
+
+      if (matchesError) throw matchesError;
+
+      const { error: predictionsError } = await supabase
+        .from("predictions")
+        .update({ points: 0 })
+        .not("id", "is", null);
+
+      if (predictionsError) throw predictionsError;
+
+      await refreshEverything(session?.user?.id, { silent: true });
+      setSavedMatches({});
+      setPointsAudit({
+        status: "success",
+        message: "Tous les résultats ont été effacés et tous les points remis à zéro.",
+      });
+      alert("✅ Résultats effacés proprement.");
+    } catch (error) {
+      console.error("Erreur suppression de tous les résultats:", error);
+      setPointsAudit({
+        status: "error",
+        message: error.message || "Erreur pendant la suppression de tous les résultats.",
+      });
+      alert(`Erreur suppression résultats : ${error?.message || JSON.stringify(error)}`);
     } finally {
       setRefreshing(false);
     }
@@ -2653,14 +2795,26 @@ export default function Home() {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={recalculateAndVerifyAllPoints}
-                      disabled={refreshing}
-                      className="rounded-2xl bg-yellow-400 px-5 py-4 font-black text-black shadow-xl disabled:opacity-60"
-                    >
-                      🔐 Audit complet des points
-                    </button>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={recalculateAndVerifyAllPoints}
+                        disabled={refreshing}
+                        className="rounded-2xl bg-yellow-400 px-5 py-4 font-black text-black shadow-xl disabled:opacity-60"
+                      >
+                        🔐 Audit complet des points
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={clearAllOfficialResults}
+                        disabled={refreshing}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-4 font-black text-white shadow-xl ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:opacity-60"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                        Effacer tous les résultats
+                      </button>
+                    </div>
                   </div>
 
                   {pointsAudit && (
@@ -2752,7 +2906,8 @@ export default function Home() {
 
                             <button
                               onClick={() => saveOfficialScore(match.id)}
-                              className={`rounded-2xl px-4 py-3 font-black transition ${
+                              disabled={refreshing}
+                              className={`rounded-2xl px-4 py-3 font-black transition disabled:opacity-60 ${
                                 savedMatches[match.id]
                                   ? "bg-yellow-400 text-black"
                                   : "bg-emerald-600 text-white"
@@ -2761,6 +2916,16 @@ export default function Home() {
                               {savedMatches[match.id]
                                 ? "✅ Vérifié"
                                 : "Valider + vérifier"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => clearMatchOfficialResult(match.id)}
+                              disabled={refreshing || (match.home_score === null && match.away_score === null)}
+                              className="inline-flex items-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                              Effacer résultat
                             </button>
                           </div>
 
