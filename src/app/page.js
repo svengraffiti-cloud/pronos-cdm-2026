@@ -394,7 +394,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-v2";
+  const APP_VERSION = "2026-05-24-delete-account-footer-final";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -1299,6 +1299,7 @@ export default function Home() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token || ""}`,
           },
         });
       } catch (apiDeleteError) {
@@ -1964,17 +1965,36 @@ export default function Home() {
               >
                 Déconnexion
               </button>
-              <button
-                type="button"
-                onClick={deleteMyAccount}
-                disabled={deleteLoading}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-5 py-4 font-black text-white shadow-xl shadow-red-950/30 disabled:opacity-50"
-              >
-                <Trash2 className="h-5 w-5" />
-                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
-              </button>
             </form>
           </div>
+
+          <footer className="mt-5 flex flex-col gap-3 text-sm font-bold text-slate-300">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <a
+                href="/contact"
+                className="flex-1 rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
+              >
+                Support
+              </a>
+
+              <a
+                href="/privacy"
+                className="flex-1 rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
+              >
+                Confidentialité
+              </a>
+            </div>
+
+            <button
+              type="button"
+              onClick={deleteMyAccount}
+              disabled={deleteLoading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
+            >
+              <Trash2 className="h-5 w-5" />
+              {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
+            </button>
+          </footer>
         </div>
       </AppShell>
     );
@@ -2057,15 +2077,6 @@ export default function Home() {
               >
                 <LogOut className="h-5 w-5" />
                 Déconnexion
-              </button>
-              <button
-                type="button"
-                onClick={deleteMyAccount}
-                disabled={deleteLoading}
-                className="inline-flex items-center gap-2 rounded-2xl bg-red-600/80 px-5 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
-              >
-                <Trash2 className="h-5 w-5" />
-                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
               </button>
             </div>
           </div>
