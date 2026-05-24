@@ -394,7 +394,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-footer-visible-final-v2";
+  const APP_VERSION = "2026-05-24-delete-account-footer-visible-final-v3-no-loading-lock";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -875,36 +875,50 @@ export default function Home() {
 
   useEffect(() => {
     async function initAuth() {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session || null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session || null);
 
-      if (data.session?.user?.id) {
-        await refreshEverything(data.session.user.id);
+        // IMPORTANT Apple Review / Safari WebView:
+        // on arrête l'écran de chargement même si Supabase met trop longtemps
+        // ou renvoie une erreur réseau. Sinon l'app reste bloquée sur "Chargement".
+        setAuthLoading(false);
+
+        if (data.session?.user?.id) {
+          await refreshEverything(data.session.user.id, { silent: true });
+        }
+      } catch (error) {
+        console.error("Erreur initialisation session:", error);
+        setAuthLoading(false);
+        setLoading(false);
       }
-
-      setAuthLoading(false);
     }
 
     initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, nextSession) => {
-        setSession(nextSession || null);
+        try {
+          setSession(nextSession || null);
+          setAuthLoading(false);
 
-        if (nextSession?.user?.id) {
-          await refreshEverything(nextSession.user.id);
-        } else {
-          setProfile(null);
-          setCurrentPlayer(null);
-          setPlayers([]);
-          setMatches([]);
-          setPredictions([]);
-          setTeams([]);
-          setNotificationsEnabled(false);
-          setHasLoadedOnce(false);
+          if (nextSession?.user?.id) {
+            await refreshEverything(nextSession.user.id, { silent: true });
+          } else {
+            setProfile(null);
+            setCurrentPlayer(null);
+            setPlayers([]);
+            setMatches([]);
+            setPredictions([]);
+            setTeams([]);
+            setNotificationsEnabled(false);
+            setHasLoadedOnce(false);
+          }
+        } catch (error) {
+          console.error("Erreur changement auth:", error);
+          setAuthLoading(false);
+          setLoading(false);
         }
-
-        setAuthLoading(false);
       }
     );
 
