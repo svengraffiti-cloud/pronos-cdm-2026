@@ -68,9 +68,9 @@ const MatchCard = memo(function MatchCard({
   const predictionBlocked = locked || noModificationLeft;
 
   const buttonLabel = locked
-    ? "Paris fermÃ©"
+    ? "Paris fermé"
     : noModificationLeft
-    ? "Modification utilisÃ©e"
+    ? "Modification utilisée"
     : hasPrediction
     ? "Modifier"
     : "Valider";
@@ -131,7 +131,7 @@ const MatchCard = memo(function MatchCard({
 
       {finished && (
         <div className="mb-3 ml-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-sm font-black text-white">
-          TERMINÃ‰
+          TERMINÉ
         </div>
       )}
 
@@ -150,7 +150,7 @@ const MatchCard = memo(function MatchCard({
             onClick={loadMatchTrend}
             className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-emerald-500/20 text-xl shadow-lg ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30"
           >
-            ðŸ€
+            🍀
           </button>
 
           {(trendLoading || trendError || trendData) && (
@@ -164,11 +164,11 @@ const MatchCard = memo(function MatchCard({
                   }}
                   className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-2xl font-black text-slate-300 hover:bg-white/20 hover:text-white"
                 >
-                  Ã—
+                  ×
                 </button>
 
                 <h4 className="mb-6 pr-10 text-2xl font-black text-emerald-300">
-                  ðŸ€ Cotes du match
+                  🍀 Cotes du match
                 </h4>
 
                 {trendLoading && (
@@ -189,7 +189,7 @@ const MatchCard = memo(function MatchCard({
                     <div className="space-y-4 text-sm">
                       <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
                         <span className="text-base font-black text-white">
-                          1 â€” {match.home_team}
+                          1 — {match.home_team}
                         </span>
                         <strong className="shrink-0 text-xl text-emerald-300">
                           {trendData.odds?.home || "Indispo"}
@@ -198,7 +198,7 @@ const MatchCard = memo(function MatchCard({
 
                       <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
                         <span className="text-base font-black text-white">
-                          N â€” Match nul
+                          N — Match nul
                         </span>
                         <strong className="shrink-0 text-xl text-emerald-300">
                           {trendData.odds?.draw || "Indispo"}
@@ -207,7 +207,7 @@ const MatchCard = memo(function MatchCard({
 
                       <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 p-4">
                         <span className="text-base font-black text-white">
-                          2 â€” {match.away_team}
+                          2 — {match.away_team}
                         </span>
                         <strong className="shrink-0 text-xl text-emerald-300">
                           {trendData.odds?.away || "Indispo"}
@@ -216,12 +216,12 @@ const MatchCard = memo(function MatchCard({
                     </div>
 
                     <div className="mt-5 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
-                      <p className="text-sm text-emerald-200">ðŸ¦ Bookmaker</p>
+                      <p className="text-sm text-emerald-200">🏦 Bookmaker</p>
                       <p className="mt-1 text-lg font-black text-white">
                         {trendData.bookmaker || "Bookmaker indisponible"}
                       </p>
                       <p className="mt-2 text-sm font-bold text-slate-300">
-                        Cotes 1/N/2 rÃ©elles rÃ©cupÃ©rÃ©es via API-Football.
+                        Cotes 1/N/2 réelles récupérées via API-Football.
                       </p>
                     </div>
 
@@ -239,12 +239,12 @@ const MatchCard = memo(function MatchCard({
       </div>
 
       <p className={`mt-2 font-black ${locked ? "text-red-400" : "text-emerald-400"}`}>
-        {locked ? "ðŸ”’ Paris fermÃ©" : "ðŸŸ¢ Paris ouvert"}
+        {locked ? "🔒 Paris fermé" : "🟢 Paris ouvert"}
       </p>
 
       {!locked && (
         <p className="mt-1 text-xs font-bold text-slate-400">
-          Verrouillage dÃ©finitif 30 min avant le match.
+          Verrouillage définitif 30 min avant le match.
         </p>
       )}
 
@@ -256,7 +256,7 @@ const MatchCard = memo(function MatchCard({
 
           {finished && (
             <div className="mt-3 rounded-2xl bg-yellow-400/20 p-4 text-center">
-              <p className="text-sm font-black text-yellow-200">Points gagnÃ©s</p>
+              <p className="text-sm font-black text-yellow-200">Points gagnés</p>
 
               <p className="text-4xl font-black text-yellow-300">
                 +{prediction.points || 0}
@@ -273,10 +273,10 @@ const MatchCard = memo(function MatchCard({
           }`}
         >
           {locked
-            ? "Paris fermÃ© dÃ©finitivement."
+            ? "Paris fermé définitivement."
             : noModificationLeft
-            ? "Tu as dÃ©jÃ  utilisÃ© ta seule modification possible."
-            : "Il te reste une seule modification possible jusquâ€™Ã  30 min avant le dÃ©but du match."}
+            ? "Tu as déjà utilisé ta seule modification possible."
+            : "Il te reste une seule modification possible jusqu’à 30 min avant le début du match."}
         </p>
       )}
 
@@ -349,7 +349,7 @@ const MatchCard = memo(function MatchCard({
                     </div>
 
                     <strong className={item ? "text-white" : "text-red-300"}>
-                      {item ? `${item.predicted_home} - ${item.predicted_away}` : "âŒ"}
+                      {item ? `${item.predicted_home} - ${item.predicted_away}` : "❌"}
                     </strong>
                   </div>
                 );
@@ -394,7 +394,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-delete-account-footer-visible-final-v3-no-loading-lock";
+  const APP_VERSION = "2026-05-24-delete-account-v2";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -698,7 +698,7 @@ export default function Home() {
 
         if (permission.receive !== "granted") {
           setNotificationsEnabled(false);
-          alert("Permission notifications refusÃ©e.");
+          alert("Permission notifications refusée.");
           return;
         }
 
@@ -713,11 +713,11 @@ export default function Home() {
             }
 
             setNotificationsEnabled(true);
-            alert("Notifications activÃ©es ðŸ‘´ðŸ»");
+            alert("Notifications activées 👴🏻");
           } catch (error) {
             console.error("Erreur sauvegarde token push:", error);
             setNotificationsEnabled(true);
-            alert("Notifications activÃ©es ðŸ‘´ðŸ»");
+            alert("Notifications activées 👴🏻");
           }
         });
 
@@ -728,7 +728,7 @@ export default function Home() {
         });
 
         PushNotifications.addListener("pushNotificationReceived", (notification) => {
-          console.log("Notification reÃ§ue:", notification);
+          console.log("Notification reçue:", notification);
         });
 
         PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
@@ -749,12 +749,12 @@ export default function Home() {
 
       if (permission !== "granted") {
         setNotificationsEnabled(false);
-        alert("Notifications refusÃ©es.");
+        alert("Notifications refusées.");
         return;
       }
 
       setNotificationsEnabled(true);
-      alert("Notifications web activÃ©es.");
+      alert("Notifications web activées.");
     } catch (error) {
       console.error(error);
       setNotificationsEnabled(false);
@@ -846,7 +846,7 @@ export default function Home() {
       setTeams(teamsResult.data || []);
       setHasLoadedOnce(true);
     } catch (error) {
-      console.error("Erreur chargement donnÃ©es:", error);
+      console.error("Erreur chargement données:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -875,50 +875,36 @@ export default function Home() {
 
   useEffect(() => {
     async function initAuth() {
-      try {
-        const { data } = await supabase.auth.getSession();
-        setSession(data.session || null);
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session || null);
 
-        // IMPORTANT Apple Review / Safari WebView:
-        // on arrête l'écran de chargement même si Supabase met trop longtemps
-        // ou renvoie une erreur réseau. Sinon l'app reste bloquée sur "Chargement".
-        setAuthLoading(false);
-
-        if (data.session?.user?.id) {
-          await refreshEverything(data.session.user.id, { silent: true });
-        }
-      } catch (error) {
-        console.error("Erreur initialisation session:", error);
-        setAuthLoading(false);
-        setLoading(false);
+      if (data.session?.user?.id) {
+        await refreshEverything(data.session.user.id);
       }
+
+      setAuthLoading(false);
     }
 
     initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, nextSession) => {
-        try {
-          setSession(nextSession || null);
-          setAuthLoading(false);
+        setSession(nextSession || null);
 
-          if (nextSession?.user?.id) {
-            await refreshEverything(nextSession.user.id, { silent: true });
-          } else {
-            setProfile(null);
-            setCurrentPlayer(null);
-            setPlayers([]);
-            setMatches([]);
-            setPredictions([]);
-            setTeams([]);
-            setNotificationsEnabled(false);
-            setHasLoadedOnce(false);
-          }
-        } catch (error) {
-          console.error("Erreur changement auth:", error);
-          setAuthLoading(false);
-          setLoading(false);
+        if (nextSession?.user?.id) {
+          await refreshEverything(nextSession.user.id);
+        } else {
+          setProfile(null);
+          setCurrentPlayer(null);
+          setPlayers([]);
+          setMatches([]);
+          setPredictions([]);
+          setTeams([]);
+          setNotificationsEnabled(false);
+          setHasLoadedOnce(false);
         }
+
+        setAuthLoading(false);
       }
     );
 
@@ -1103,7 +1089,7 @@ export default function Home() {
         const inviteResult = await inviteResponse.json().catch(() => null);
 
         if (!inviteResponse.ok || !inviteResult?.valid) {
-          setAuthError(inviteResult?.error || "Code dâ€™accÃ¨s famille (PAPY2026) incorrect.");
+          setAuthError(inviteResult?.error || "Code d’accès famille (PAPY2026) incorrect.");
           return;
         }
 
@@ -1224,8 +1210,8 @@ export default function Home() {
       setCurrentPlayer(playerData);
       await refreshEverything(userId, { silent: true });
     } catch (error) {
-      console.error("Erreur crÃ©ation/rÃ©paration profil:", error);
-      setAuthError(error.message || "Erreur de crÃ©ation du profil.");
+      console.error("Erreur création/réparation profil:", error);
+      setAuthError(error.message || "Erreur de création du profil.");
     } finally {
       setCreatingProfile(false);
     }
@@ -1252,8 +1238,8 @@ export default function Home() {
         window.location.href = "/";
       }
     } catch (error) {
-      console.error("Erreur dÃ©connexion:", error);
-      alert("Erreur pendant la dÃ©connexion.");
+      console.error("Erreur déconnexion:", error);
+      alert("Erreur pendant la déconnexion.");
     } finally {
       setLoading(false);
     }
@@ -1263,13 +1249,13 @@ export default function Home() {
     if (deleteLoading) return;
 
     const firstConfirmation = window.confirm(
-      "Supprimer dÃ©finitivement ton compte ? Cette action efface ton profil et tes pronostics."
+      "Supprimer définitivement ton compte ? Cette action efface ton profil et tes pronostics."
     );
 
     if (!firstConfirmation) return;
 
     const secondConfirmation = window.confirm(
-      "DerniÃ¨re confirmation : cette suppression est dÃ©finitive. Continuer ?"
+      "Dernière confirmation : cette suppression est définitive. Continuer ?"
     );
 
     if (!secondConfirmation) return;
@@ -1285,7 +1271,7 @@ export default function Home() {
       const user = userResult?.user;
 
       if (!user?.id) {
-        throw new Error("Aucun utilisateur connectÃ©.");
+        throw new Error("Aucun utilisateur connecté.");
       }
 
       const playerId = profile?.player_id || currentPlayer?.id;
@@ -1313,11 +1299,10 @@ export default function Home() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token || ""}`,
           },
         });
       } catch (apiDeleteError) {
-        console.warn("Suppression Auth via API indisponible, donnÃ©es utilisateur dÃ©jÃ  supprimÃ©es:", apiDeleteError);
+        console.warn("Suppression Auth via API indisponible, données utilisateur déjà supprimées:", apiDeleteError);
       }
 
       await supabase.auth.signOut();
@@ -1333,7 +1318,7 @@ export default function Home() {
       setNotificationsEnabled(false);
       setHasLoadedOnce(false);
 
-      alert("Ton compte et tes donnÃ©es utilisateur ont Ã©tÃ© supprimÃ©s.");
+      alert("Ton compte et tes données utilisateur ont été supprimés.");
 
       if (typeof window !== "undefined") {
         window.location.href = "/";
@@ -1342,7 +1327,7 @@ export default function Home() {
       console.error("Erreur suppression compte:", error);
       alert(
         error?.message ||
-          "Erreur pendant la suppression du compte. RÃ©essaie dans quelques instants."
+          "Erreur pendant la suppression du compte. Réessaie dans quelques instants."
       );
     } finally {
       setDeleteLoading(false);
@@ -1409,12 +1394,12 @@ export default function Home() {
 
     let points = 0;
 
-    // Bon rÃ©sultat : victoire domicile / nul / victoire extÃ©rieur
+    // Bon résultat : victoire domicile / nul / victoire extérieur
     if (predictedResult === realResult) {
       points += 1;
     }
 
-    // Bon Ã©cart de buts
+    // Bon écart de buts
     if (predictedDiff === realDiff) {
       points += 1;
     }
@@ -1440,14 +1425,14 @@ export default function Home() {
       }
 
       if (isMatchLocked(match.match_date)) {
-        alert("Paris fermÃ©s dÃ©finitivement 30 min avant le coup d'envoi.");
+        alert("Paris fermés définitivement 30 min avant le coup d'envoi.");
         return;
       }
 
       const existing = predictionByPlayerAndMatch.get(`${currentPlayerId}-${match.id}`);
 
       if (existing && (existing.edit_count || 0) >= 1) {
-        alert("Tu as dÃ©jÃ  utilisÃ© ta seule modification possible pour ce match.");
+        alert("Tu as déjà utilisé ta seule modification possible pour ce match.");
         return;
       }
 
@@ -1488,7 +1473,7 @@ export default function Home() {
         .single();
 
       if (error) {
-        console.error("Erreur rÃ©cupÃ©ration prono:", error);
+        console.error("Erreur récupération prono:", error);
         await loadData({ silent: true });
         return;
       }
@@ -1527,7 +1512,7 @@ export default function Home() {
 
   async function saveOfficialScore(matchId) {
     if (!isAdmin) {
-      alert("AccÃ¨s admin requis.");
+      alert("Accès admin requis.");
       return;
     }
 
@@ -1562,8 +1547,8 @@ export default function Home() {
     const alreadyHadScore = match.home_score !== null && match.away_score !== null;
     const confirmation = window.confirm(
       alreadyHadScore
-        ? `Ce match avait dÃ©jÃ  un score. Confirmer le remplacement par ${newHome}-${newAway} et le recalcul sÃ©curisÃ© des points ?`
-        : `Confirmer le score officiel ${newHome}-${newAway} et le recalcul sÃ©curisÃ© des points ?`
+        ? `Ce match avait déjà un score. Confirmer le remplacement par ${newHome}-${newAway} et le recalcul sécurisé des points ?`
+        : `Confirmer le score officiel ${newHome}-${newAway} et le recalcul sécurisé des points ?`
     );
 
     if (!confirmation) return;
@@ -1571,7 +1556,7 @@ export default function Home() {
     setRefreshing(true);
     setPointsAudit({
       status: "running",
-      message: "Validation du score et double vÃ©rification des points en cours...",
+      message: "Validation du score et double vérification des points en cours...",
     });
 
     try {
@@ -1610,10 +1595,10 @@ export default function Home() {
       if (audit.mismatches.length > 0) {
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${audit.mismatches.length} erreur(s) dÃ©tectÃ©e(s) aprÃ¨s recalcul sur ${audit.checked} pronostic(s).`,
+          message: `Alerte : ${audit.mismatches.length} erreur(s) détectée(s) après recalcul sur ${audit.checked} pronostic(s).`,
         });
 
-        alert("âš ï¸ Erreur dÃ©tectÃ©e : les points ne correspondent pas aprÃ¨s recalcul. Ne publie pas ce rÃ©sultat.");
+        alert("⚠️ Erreur détectée : les points ne correspondent pas après recalcul. Ne publie pas ce résultat.");
         return;
       }
 
@@ -1626,17 +1611,17 @@ export default function Home() {
 
       setPointsAudit({
         status: "success",
-        message: `Score validÃ© et points vÃ©rifiÃ©s : ${audit.checked} pronostic(s) contrÃ´lÃ©(s), 0 erreur.`,
+        message: `Score validé et points vérifiés : ${audit.checked} pronostic(s) contrôlé(s), 0 erreur.`,
       });
     } catch (error) {
-      console.error("Erreur validation score sÃ©curisÃ©:", error);
+      console.error("Erreur validation score sécurisé:", error);
 
       setPointsAudit({
         status: "error",
-        message: error.message || "Erreur pendant la validation sÃ©curisÃ©e du score.",
+        message: error.message || "Erreur pendant la validation sécurisée du score.",
       });
 
-      alert(`Erreur validation sÃ©curisÃ©e : ${error?.message || JSON.stringify(error)}`);
+      alert(`Erreur validation sécurisée : ${error?.message || JSON.stringify(error)}`);
     } finally {
       setRefreshing(false);
     }
@@ -1644,12 +1629,12 @@ export default function Home() {
 
   async function recalculateAndVerifyAllPoints() {
     if (!isAdmin) {
-      alert("AccÃ¨s admin requis.");
+      alert("Accès admin requis.");
       return;
     }
 
     const confirmation = window.confirm(
-      "Lancer une double vÃ©rification complÃ¨te de tous les points du concours ?"
+      "Lancer une double vérification complète de tous les points du concours ?"
     );
 
     if (!confirmation) return;
@@ -1715,35 +1700,35 @@ export default function Home() {
       if (orphanPredictions.length > 0) {
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${orphanPredictions.length} pronostic(s) orphelin(s) liÃ©(s) Ã  des matchs supprimÃ©s. Nettoyage Supabase nÃ©cessaire avant publication.`,
+          message: `Alerte : ${orphanPredictions.length} pronostic(s) orphelin(s) lié(s) à des matchs supprimés. Nettoyage Supabase nécessaire avant publication.`,
         });
 
-        alert("âš ï¸ Audit terminÃ© avec pronostics orphelins. Ne publie pas le classement.");
+        alert("⚠️ Audit terminé avec pronostics orphelins. Ne publie pas le classement.");
         return;
       }
 
       if (mismatches.length > 0) {
         setPointsAudit({
           status: "error",
-          message: `Alerte : ${mismatches.length} erreur(s) dÃ©tectÃ©e(s) aprÃ¨s audit complet.`,
+          message: `Alerte : ${mismatches.length} erreur(s) détectée(s) après audit complet.`,
         });
 
-        alert("âš ï¸ Audit terminÃ© avec erreurs. Ne publie pas le classement.");
+        alert("⚠️ Audit terminé avec erreurs. Ne publie pas le classement.");
         return;
       }
 
       setPointsAudit({
         status: "success",
-        message: `Audit complet validÃ© : ${auditPredictions?.length || 0} pronostic(s) vÃ©rifiÃ©(s), 0 erreur.`,
+        message: `Audit complet validé : ${auditPredictions?.length || 0} pronostic(s) vérifié(s), 0 erreur.`,
       });
 
-      alert("âœ… Tous les points ont Ã©tÃ© recalculÃ©s et vÃ©rifiÃ©s.");
+      alert("✅ Tous les points ont été recalculés et vérifiés.");
     } catch (error) {
       console.error("Erreur audit complet des points:", error);
 
       setPointsAudit({
         status: "error",
-        message: error.message || "Erreur pendant lâ€™audit complet des points.",
+        message: error.message || "Erreur pendant l’audit complet des points.",
       });
 
       alert(`Erreur audit complet : ${error?.message || JSON.stringify(error)}`);
@@ -1789,7 +1774,7 @@ export default function Home() {
     if (match.home_score > match.away_score) return match.home_team;
     if (match.away_score > match.home_score) return match.away_team;
 
-    return "Vainqueur Ã  dÃ©finir";
+    return "Vainqueur à définir";
   }
 
   if (authLoading) {
@@ -1820,7 +1805,7 @@ export default function Home() {
               </p>
               <h1 className="mt-3 text-4xl font-black">Pronos Famille</h1>
               <p className="mt-2 text-slate-300">
-                Connecte-toi pour accÃ©der uniquement Ã  ta feuille de pronostic.
+                Connecte-toi pour accéder uniquement à ta feuille de pronostic.
               </p>
             </div>
 
@@ -1839,7 +1824,7 @@ export default function Home() {
                   authMode === "signup" ? "bg-violet-600" : "text-slate-300"
                 }`}
               >
-                CrÃ©er un compte
+                Créer un compte
               </button>
             </div>
 
@@ -1849,7 +1834,7 @@ export default function Home() {
                   <input
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
-                    placeholder="Ton prÃ©nom / pseudo"
+                    placeholder="Ton prénom / pseudo"
                     className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                   />
 
@@ -1870,13 +1855,13 @@ export default function Home() {
                     value={inviteAccessCode}
                     onChange={(e) => setInviteAccessCode(e.target.value)}
                     type="text"
-                    placeholder="Code dâ€™accÃ¨s famille"
+                    placeholder="Code d’accès famille"
                     required
                     className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                   />
 
                   <p className="rounded-2xl bg-emerald-500/10 p-3 text-xs font-bold text-emerald-200 ring-1 ring-emerald-300/10">
-                    Ce code est demandÃ© uniquement Ã  la crÃ©ation du compte. Les comptes dÃ©jÃ  crÃ©Ã©s se connectent normalement.
+                    Ce code est demandé uniquement à la création du compte. Les comptes déjà créés se connectent normalement.
                   </p>
                 </>
               )}
@@ -1915,7 +1900,7 @@ export default function Home() {
                   ? "Chargement..."
                   : authMode === "login"
                   ? "Se connecter"
-                  : "CrÃ©er mon compte"}
+                  : "Créer mon compte"}
               </button>
             </form>
           </div>
@@ -1931,9 +1916,9 @@ export default function Home() {
           <div className="w-full max-w-xl rounded-[2rem] border border-emerald-300/20 bg-[#12091f]/80 p-8 shadow-2xl backdrop-blur-md">
             <div className="text-center">
               <UserCircle className="mx-auto h-20 w-20 text-emerald-300" />
-              <h1 className="mt-4 text-3xl font-black">CrÃ©er ton profil joueur</h1>
+              <h1 className="mt-4 text-3xl font-black">Créer ton profil joueur</h1>
               <p className="mt-2 text-slate-300">
-                Ce profil sera liÃ© Ã  ton compte. Tu nâ€™auras accÃ¨s quâ€™Ã  tes pronos.
+                Ce profil sera lié à ton compte. Tu n’auras accès qu’à tes pronos.
               </p>
             </div>
 
@@ -1941,7 +1926,7 @@ export default function Home() {
               <input
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Ton prÃ©nom / pseudo"
+                placeholder="Ton prénom / pseudo"
                 required
                 className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
               />
@@ -1969,7 +1954,7 @@ export default function Home() {
                 disabled={creatingProfile}
                 className="w-full rounded-2xl bg-violet-600 px-5 py-4 font-black shadow-xl disabled:opacity-50"
               >
-                {creatingProfile ? "CrÃ©ation..." : "Entrer dans l'app"}
+                {creatingProfile ? "Création..." : "Entrer dans l'app"}
               </button>
 
               <button
@@ -1977,38 +1962,10 @@ export default function Home() {
                 onClick={signOut}
                 className="w-full rounded-2xl bg-white/10 px-5 py-4 font-black"
               >
-                DÃ©connexion
+                Déconnexion
               </button>
             </form>
           </div>
-
-          <footer className="mt-5 flex flex-col gap-3 text-sm font-bold text-slate-300">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <a
-                href="/contact"
-                className="flex-1 rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
-              >
-                Support
-              </a>
-
-              <a
-                href="/privacy"
-                className="flex-1 rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
-              >
-                ConfidentialitÃ©
-              </a>
-            </div>
-
-            <button
-              type="button"
-              onClick={deleteMyAccount}
-              disabled={deleteLoading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
-            >
-              <Trash2 className="h-5 w-5" />
-              {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
-            </button>
-          </footer>
         </div>
       </AppShell>
     );
@@ -2054,13 +2011,13 @@ export default function Home() {
               )}
 
               <div className="text-left">
-                <p className="text-xs text-slate-300">ConnectÃ© en tant que</p>
+                <p className="text-xs text-slate-300">Connecté en tant que</p>
                 <p className="font-black">{currentPlayer?.name}</p>
               </div>
             </div>
 
             <p className="mt-3 max-w-2xl text-lg text-slate-200">
-              Ton espace pronos sÃ©curisÃ©. Les pronos des autres apparaissent uniquement aprÃ¨s fermeture des paris.
+              Ton espace pronos sécurisé. Les pronos des autres apparaissent uniquement après fermeture des paris.
             </p>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -2070,8 +2027,8 @@ export default function Home() {
               >
                 <Bell className="h-5 w-5" />
                 {notificationsEnabled
-                  ? "Notifications activÃ©es ðŸ‘´ðŸ»"
-                  : "Activer les notifications ðŸ‘´ðŸ»"}
+                  ? "Notifications activées 👴🏻"
+                  : "Activer les notifications 👴🏻"}
               </button>
 
               <button
@@ -2080,9 +2037,9 @@ export default function Home() {
                 className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500/20 px-5 py-3 font-black text-white ring-1 ring-emerald-300/20 transition hover:bg-emerald-500/30 disabled:opacity-60"
               >
                 <span className={refreshing ? "inline-block animate-spin" : ""}>
-                  ðŸ”„
+                  🔄
                 </span>
-                {refreshing ? "RafraÃ®chissement..." : "RafraÃ®chir"}
+                {refreshing ? "Rafraîchissement..." : "Rafraîchir"}
               </button>
 
               <button
@@ -2090,7 +2047,7 @@ export default function Home() {
                 className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-black text-white ring-1 ring-white/10"
               >
                 <LogOut className="h-5 w-5" />
-                DÃ©connexion
+                Déconnexion
               </button>
             </div>
           </div>
@@ -2126,7 +2083,7 @@ export default function Home() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="text-3xl">ðŸŽ¯</span>
+              <span className="text-3xl">🎯</span>
               <div>
                 <p className="text-sm text-slate-300">Suivi</p>
                 <p className="text-2xl font-black">Mes paris en cours</p>
@@ -2147,9 +2104,9 @@ export default function Home() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="text-3xl">ðŸ“…</span>
+              <span className="text-3xl">📅</span>
               <div>
-                <p className="text-sm text-slate-300">Aujourdâ€™hui</p>
+                <p className="text-sm text-slate-300">Aujourd’hui</p>
                 <p className="text-2xl font-black">Mes pronos du jour</p>
               </div>
             </div>
@@ -2165,10 +2122,10 @@ export default function Home() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="text-3xl">ðŸ—‚ï¸</span>
+              <span className="text-3xl">🗂️</span>
               <div>
                 <p className="text-sm text-slate-300">Archives</p>
-                <p className="text-2xl font-black">Mes paris passÃ©s</p>
+                <p className="text-2xl font-black">Mes paris passés</p>
               </div>
             </div>
           </button>
@@ -2179,37 +2136,37 @@ export default function Home() {
             {[
               {
                 key: "pronos",
-                icon: "âš½",
+                icon: "⚽",
               },
               {
                 key: "encours",
-                icon: "ðŸŽ¯",
+                icon: "🎯",
               },
               {
                 key: "jour",
-                icon: "ðŸ“…",
+                icon: "📅",
               },
               {
                 key: "historique",
-                icon: "ðŸ—‚ï¸",
+                icon: "🗂️",
               },
               {
                 key: "classement",
-                icon: "ðŸ†",
+                icon: "🏆",
               },
               {
                 key: "groupes",
-                icon: "ðŸ‘¥",
+                icon: "👥",
               },
               {
                 key: "tableau",
-                icon: "ðŸ“‹",
+                icon: "📋",
               },
               ...(isAdmin
                 ? [
                     {
                       key: "admin",
-                      icon: "ðŸ”’",
+                      icon: "🔒",
                     },
                   ]
                 : []),
@@ -2232,7 +2189,7 @@ export default function Home() {
 
         {refreshing && !loading && (
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-center text-sm font-black text-emerald-200 shadow-xl backdrop-blur-md">
-            Mise Ã  jour en cours...
+            Mise à jour en cours...
           </div>
         )}
 
@@ -2244,7 +2201,7 @@ export default function Home() {
               Chargement
             </p>
             <p className="mt-2 text-slate-300">
-              Chargement initial des donnÃ©es...
+              Chargement initial des données...
             </p>
           </div>
         ) : (
@@ -2257,7 +2214,7 @@ export default function Home() {
                     <div>
                       <h2 className="text-2xl font-black">Ta feuille de pronostic</h2>
                       <p className="text-sm text-slate-300">
-                        Tu ne peux remplir que tes propres pronos. Tu as une seule modification possible, puis les paris se verrouillent dÃ©finitivement 30 min avant le coup dâ€™envoi.
+                        Tu ne peux remplir que tes propres pronos. Tu as une seule modification possible, puis les paris se verrouillent définitivement 30 min avant le coup d’envoi.
                       </p>
                     </div>
                   </div>
@@ -2267,7 +2224,7 @@ export default function Home() {
 
                   <div>
                     <div className="mb-5 flex items-center gap-3">
-                      <span className="text-3xl">ðŸ”¥</span>
+                      <span className="text-3xl">🔥</span>
 
                       <div>
                         <h2 className="text-2xl font-black">
@@ -2302,15 +2259,15 @@ export default function Home() {
 
                   <div>
                     <div className="mb-5 flex items-center gap-3">
-                      <span className="text-3xl">âœ…</span>
+                      <span className="text-3xl">✅</span>
 
                       <div>
                         <h2 className="text-2xl font-black">
-                          Matchs terminÃ©s
+                          Matchs terminés
                         </h2>
 
                         <p className="text-sm text-slate-300">
-                          Historique des matchs dÃ©jÃ  jouÃ©s et points gagnÃ©s.
+                          Historique des matchs déjà joués et points gagnés.
                         </p>
                       </div>
                     </div>
@@ -2351,11 +2308,11 @@ export default function Home() {
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-emerald-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <span className="text-4xl">ðŸŽ¯</span>
+                    <span className="text-4xl">🎯</span>
                     <div>
                       <h2 className="text-2xl font-black">Mes paris en cours</h2>
                       <p className="text-sm text-slate-300">
-                        Retrouve ici tes pronos validÃ©s, les matchs verrouillÃ©s, les scores officiels dÃ¨s validation admin et tes points. Cette page reste utile toute la journÃ©e pour suivre lâ€™Ã©volution.
+                        Retrouve ici tes pronos validés, les matchs verrouillés, les scores officiels dès validation admin et tes points. Cette page reste utile toute la journée pour suivre l’évolution.
                       </p>
                     </div>
                   </div>
@@ -2363,7 +2320,7 @@ export default function Home() {
 
                 {myCurrentBetMatches.length === 0 ? (
                   <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
-                    <p className="text-4xl">ðŸŽ¯</p>
+                    <p className="text-4xl">🎯</p>
                     <h3 className="mt-3 text-2xl font-black">Aucun pari en cours</h3>
                     <p className="mt-2 text-slate-300">
                       Va dans Paris ouverts ou Mes pronos du jour pour valider tes prochains scores.
@@ -2403,11 +2360,11 @@ export default function Home() {
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-yellow-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <span className="text-4xl">ðŸ“…</span>
+                    <span className="text-4xl">📅</span>
                     <div>
                       <h2 className="text-2xl font-black">Mes pronos du jour</h2>
                       <p className="text-sm text-slate-300">
-                        Tes matchs du jour restent ici avec tes pronos, les scores officiels et tes points. VerrouillÃ©s aujourdâ€™hui : {lockedTodayCount}/{todaysMatches.length}.
+                        Tes matchs du jour restent ici avec tes pronos, les scores officiels et tes points. Verrouillés aujourd’hui : {lockedTodayCount}/{todaysMatches.length}.
                       </p>
                     </div>
                   </div>
@@ -2415,10 +2372,10 @@ export default function Home() {
 
                 {todaysMatches.length === 0 ? (
                   <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
-                    <p className="text-4xl">ðŸ˜´</p>
-                    <h3 className="mt-3 text-2xl font-black">Aucun match aujourdâ€™hui</h3>
+                    <p className="text-4xl">😴</p>
+                    <h3 className="mt-3 text-2xl font-black">Aucun match aujourd’hui</h3>
                     <p className="mt-2 text-slate-300">
-                      Reviens demain ou consulte tes paris passÃ©s.
+                      Reviens demain ou consulte tes paris passés.
                     </p>
                   </div>
                 ) : (
@@ -2449,11 +2406,11 @@ export default function Home() {
                 <div className="rounded-[2rem] border border-violet-300/25 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-4xl">ðŸ—‚ï¸</span>
+                      <span className="text-4xl">🗂️</span>
                       <div>
-                        <h2 className="text-2xl font-black">Mes paris passÃ©s</h2>
+                        <h2 className="text-2xl font-black">Mes paris passés</h2>
                         <p className="text-sm text-slate-300">
-                          Choisis une date pour revoir tes pronos, les rÃ©sultats et les points gagnÃ©s.
+                          Choisis une date pour revoir tes pronos, les résultats et les points gagnés.
                         </p>
                       </div>
                     </div>
@@ -2464,7 +2421,7 @@ export default function Home() {
                       className="rounded-2xl bg-[#0b0513]/90 p-4 font-black text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
                     >
                       {pastPredictionDateOptions.length === 0 ? (
-                        <option value="">Aucun pari passÃ©</option>
+                        <option value="">Aucun pari passé</option>
                       ) : (
                         pastPredictionDateOptions.map((option) => (
                           <option key={option.key} value={option.key}>
@@ -2478,10 +2435,10 @@ export default function Home() {
 
                 {selectedPastMatches.length === 0 ? (
                   <div className="rounded-[2rem] border border-white/15 bg-[#22123a]/80 p-6 text-center shadow-xl backdrop-blur-md">
-                    <p className="text-4xl">ðŸ“­</p>
+                    <p className="text-4xl">📭</p>
                     <h3 className="mt-3 text-2xl font-black">Aucun pari pour cette date</h3>
                     <p className="mt-2 text-slate-300">
-                      Les paris passÃ©s apparaÃ®tront ici aprÃ¨s les premiÃ¨res journÃ©es.
+                      Les paris passés apparaîtront ici après les premières journées.
                     </p>
                   </div>
                 ) : (
@@ -2559,7 +2516,7 @@ export default function Home() {
                           <thead className="text-slate-300">
                             <tr>
                               <th className="p-2 text-left">#</th>
-                              <th className="p-2 text-left">Ã‰quipe</th>
+                              <th className="p-2 text-left">Équipe</th>
                               <th className="p-2">MJ</th>
                               <th className="p-2">G</th>
                               <th className="p-2">N</th>
@@ -2579,7 +2536,7 @@ export default function Home() {
                                   {team.name}
                                   {index < 2 && (
                                     <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
-                                      qualifiÃ©
+                                      qualifié
                                     </span>
                                   )}
                                 </td>
@@ -2605,10 +2562,10 @@ export default function Home() {
             {tab === "tableau" && (
               <section className="space-y-6">
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
-                  <h2 className="text-2xl font-black">Ã‰quipes qualifiÃ©es provisoires</h2>
+                  <h2 className="text-2xl font-black">Équipes qualifiées provisoires</h2>
 
                   <p className="mt-2 text-sm text-slate-300">
-                    Pour lâ€™instant, les deux premiers de chaque groupe sont listÃ©s automatiquement.
+                    Pour l’instant, les deux premiers de chaque groupe sont listés automatiquement.
                   </p>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -2653,7 +2610,7 @@ export default function Home() {
                         </p>
 
                         <p className="mt-2 text-sm text-emerald-300">
-                          QualifiÃ© : {getWinner(match) || "Ã  dÃ©terminer"}
+                          Qualifié : {getWinner(match) || "à déterminer"}
                         </p>
                       </div>
                     ))}
@@ -2690,9 +2647,9 @@ export default function Home() {
                 <div className="rounded-[2rem] border border-white/15 bg-[#12091f]/75 p-6 shadow-xl backdrop-blur-md">
                   <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h2 className="text-2xl font-black">RÃ©sultats officiels</h2>
+                      <h2 className="text-2xl font-black">Résultats officiels</h2>
                       <p className="mt-1 text-sm text-slate-300">
-                        Chaque score validÃ© dÃ©clenche un recalcul puis une double vÃ©rification en base.
+                        Chaque score validé déclenche un recalcul puis une double vérification en base.
                       </p>
                     </div>
 
@@ -2702,7 +2659,7 @@ export default function Home() {
                       disabled={refreshing}
                       className="rounded-2xl bg-yellow-400 px-5 py-4 font-black text-black shadow-xl disabled:opacity-60"
                     >
-                      ðŸ” Audit complet des points
+                      🔐 Audit complet des points
                     </button>
                   </div>
 
@@ -2802,8 +2759,8 @@ export default function Home() {
                               }`}
                             >
                               {savedMatches[match.id]
-                                ? "âœ… VÃ©rifiÃ©"
-                                : "Valider + vÃ©rifier"}
+                                ? "✅ Vérifié"
+                                : "Valider + vérifier"}
                             </button>
                           </div>
 
@@ -2812,7 +2769,7 @@ export default function Home() {
                               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                 <span>Voir le suivi des pronos</span>
                                 <span className="text-sm text-slate-300">
-                                  âœ… {playersWhoPredicted.length}/{players.length} ont jouÃ© Â· âŒ {playersMissing.length} manquant(s)
+                                  ✅ {playersWhoPredicted.length}/{players.length} ont joué · ❌ {playersMissing.length} manquant(s)
                                 </span>
                               </div>
                             </summary>
@@ -2820,7 +2777,7 @@ export default function Home() {
                             <div className="mt-4 grid gap-4 md:grid-cols-2">
                               <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-300/10">
                                 <p className="mb-3 font-black text-emerald-300">
-                                  âœ… Ont pronostiquÃ© ({playersWhoPredicted.length})
+                                  ✅ Ont pronostiqué ({playersWhoPredicted.length})
                                 </p>
 
                                 {playersWhoPredicted.length === 0 ? (
@@ -2869,12 +2826,12 @@ export default function Home() {
 
                               <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
                                 <p className="mb-3 font-black text-red-300">
-                                  âŒ Pas encore pronostiquÃ© ({playersMissing.length})
+                                  ❌ Pas encore pronostiqué ({playersMissing.length})
                                 </p>
 
                                 {playersMissing.length === 0 ? (
                                   <p className="text-sm text-emerald-300">
-                                    Tout le monde a jouÃ© ðŸ‘Œ
+                                    Tout le monde a joué 👌
                                   </p>
                                 ) : (
                                   <div className="space-y-2">
@@ -2928,7 +2885,7 @@ export default function Home() {
               href="/privacy"
               className="rounded-2xl bg-white/5 px-4 py-3 text-center transition hover:bg-white/10 hover:text-white"
             >
-              ConfidentialitÃ©
+              Confidentialité
             </a>
 
             <button
