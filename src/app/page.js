@@ -408,11 +408,6 @@ export default function Home() {
 
   const isAdmin = profile?.role === "admin";
   const currentPlayerId = profile?.player_id;
-  function formatDayKey(date) {
-  return new Date(date).toLocaleDateString("fr-CA");
-}
-
-
 
   const groupNames = useMemo(
     () => [...new Set(teams.map((team) => team.group_name))],
@@ -530,7 +525,7 @@ export default function Home() {
     return [...keys.entries()]
       .map(([key, label]) => ({ key, label }))
       .sort((a, b) => b.key.localeCompare(a.key));
-  }, [matches, predictions, currentPlayerId, todayKey]);
+  }, [matches, currentPredictionByMatch, todayKey]);
 
   const selectedPastMatches = useMemo(
     () =>
@@ -542,7 +537,7 @@ export default function Home() {
             getPrediction(match.id)
         )
         .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
-    [matches, selectedPastDate, predictions, currentPlayerId]
+    [matches, selectedPastDate, currentPredictionByMatch]
   );
 
   const myCurrentBetMatches = useMemo(
@@ -559,7 +554,7 @@ export default function Home() {
           return isToday || isUnfinished;
         })
         .sort((a, b) => new Date(a.match_date) - new Date(b.match_date)),
-    [matches, predictions, currentPlayerId, todayKey]
+    [matches, currentPredictionByMatch, todayKey]
   );
 
   const openMatches = useMemo(
@@ -675,15 +670,13 @@ export default function Home() {
 
     return qualified;
   }, [groupNames, groupStandingsByName]);
-
-  const isMatchLocked = (matchDate) => {
+  function isMatchLocked(matchDate) {
     const lockTime = new Date(matchDate).getTime() - 30 * 60 * 1000;
     return Date.now() >= lockTime;
-  };
-
-  const isMatchFinished = (match) => {
+  }
+  function isMatchFinished(match) {
     return match.home_score !== null && match.away_score !== null;
-  };
+  }
 
 
 
