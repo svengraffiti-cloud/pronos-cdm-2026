@@ -100,20 +100,11 @@ const MatchCard = memo(function MatchCard({
         date: match.match_date || "",
       });
 
-      const response = await fetch(`/api/match-trend?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-        },
-      });
+      const response = await fetch(`/api/match-trend?${params.toString()}`);
       const result = await response.json().catch(() => null);
 
       if (!response.ok || !result?.ok) {
-        throw new Error(
-          result?.error ||
-            "Tendance indisponible. Vérifie la route /api/match-trend et la clé API-Football côté serveur."
-        );
+        throw new Error(result?.error || "Tendance indisponible.");
       }
 
       setTrendData(result);
@@ -399,11 +390,13 @@ export default function Home() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [scores, setScores] = useState({});
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-24-admin-delete-trends-v3";
+  const APP_VERSION = "2026-05-24-delete-account-v2";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -1257,17 +1250,10 @@ export default function Home() {
   async function deleteMyAccount() {
     if (deleteLoading) return;
 
-    const firstConfirmation = window.confirm(
-      "Supprimer définitivement ton compte ? Cette action efface ton profil et tes pronostics."
-    );
-
-    if (!firstConfirmation) return;
-
-    const secondConfirmation = window.confirm(
-      "Dernière confirmation : cette suppression est définitive. Continuer ?"
-    );
-
-    if (!secondConfirmation) return;
+    if (deleteConfirmText !== "SUPPRIMER") {
+      alert("Tape exactement SUPPRIMER pour confirmer la suppression du compte.");
+      return;
+    }
 
     setDeleteLoading(true);
     setRefreshing(true);
@@ -1304,16 +1290,11 @@ export default function Home() {
       }
 
       try {
-        const { data: sessionResult } = await supabase.auth.getSession();
-        const accessToken = sessionResult?.session?.access_token;
-
         await fetch("/api/delete-account", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
-          body: JSON.stringify({ userId: user.id }),
         });
       } catch (apiDeleteError) {
         console.warn("Suppression Auth via API indisponible, données utilisateur déjà supprimées:", apiDeleteError);
@@ -1331,6 +1312,9 @@ export default function Home() {
       setScores({});
       setNotificationsEnabled(false);
       setHasLoadedOnce(false);
+
+      setShowDeleteAccountModal(false);
+      setDeleteConfirmText("");
 
       alert("Ton compte et tes données utilisateur ont été supprimés.");
 
@@ -1751,134 +1735,6 @@ export default function Home() {
     }
   }
 
-  async function clearMatchOfficialResult(matchId) {
-    if (!isAdmin) {
-      alert("Accès admin requis.");
-      return;
-    }
-
-    const match = matches.find((item) => item.id === matchId);
-
-    if (!match) {
-      alert("Match introuvable.");
-      return;
-    }
-
-    const confirmation = window.confirm(
-      `Effacer le résultat officiel de ${match.home_team} - ${match.away_team} et remettre les points de ce match à zéro ?`
-    );
-
-    if (!confirmation) return;
-
-    setRefreshing(true);
-    setPointsAudit({
-      status: "running",
-      message: "Suppression du résultat et remise à zéro des points du match...",
-    });
-
-    try {
-      const { error: matchError } = await supabase
-        .from("matches")
-        .update({
-          home_score: null,
-          away_score: null,
-        })
-        .eq("id", matchId);
-
-      if (matchError) throw matchError;
-
-      const { error: predictionsError } = await supabase
-        .from("predictions")
-        .update({ points: 0 })
-        .eq("match_id", matchId);
-
-      if (predictionsError) throw predictionsError;
-
-      await refreshEverything(session?.user?.id, { silent: true });
-
-      setSavedMatches((prev) => {
-        const next = { ...prev };
-        delete next[matchId];
-        return next;
-      });
-
-      setPointsAudit({
-        status: "success",
-        message: "Résultat supprimé proprement et points du match remis à zéro.",
-      });
-    } catch (error) {
-      console.error("Erreur suppression résultat:", error);
-      setPointsAudit({
-        status: "error",
-        message: error.message || "Erreur pendant la suppression du résultat.",
-      });
-      alert(`Erreur suppression résultat : ${error?.message || JSON.stringify(error)}`);
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  async function clearAllOfficialResults() {
-    if (!isAdmin) {
-      alert("Accès admin requis.");
-      return;
-    }
-
-    const confirmation = window.confirm(
-      "Effacer TOUS les résultats officiels et remettre TOUS les points à zéro ? Cette action ne supprime pas les joueurs ni les pronostics."
-    );
-
-    if (!confirmation) return;
-
-    const secondConfirmation = window.confirm(
-      "Dernière confirmation : tous les scores officiels seront vidés. Continuer ?"
-    );
-
-    if (!secondConfirmation) return;
-
-    setRefreshing(true);
-    setPointsAudit({
-      status: "running",
-      message: "Suppression de tous les résultats et remise à zéro des points...",
-    });
-
-    try {
-      const { error: matchesError } = await supabase
-        .from("matches")
-        .update({
-          home_score: null,
-          away_score: null,
-        })
-        .not("id", "is", null);
-
-      if (matchesError) throw matchesError;
-
-      const { error: predictionsError } = await supabase
-        .from("predictions")
-        .update({ points: 0 })
-        .not("id", "is", null);
-
-      if (predictionsError) throw predictionsError;
-
-      await refreshEverything(session?.user?.id, { silent: true });
-      setSavedMatches({});
-      setPointsAudit({
-        status: "success",
-        message: "Tous les résultats ont été effacés et tous les points remis à zéro.",
-      });
-      alert("✅ Résultats effacés proprement.");
-    } catch (error) {
-      console.error("Erreur suppression de tous les résultats:", error);
-      setPointsAudit({
-        status: "error",
-        message: error.message || "Erreur pendant la suppression de tous les résultats.",
-      });
-      alert(`Erreur suppression résultats : ${error?.message || JSON.stringify(error)}`);
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
   async function addPlayer() {
     if (!isAdmin) return;
     if (!newPlayer.trim()) return;
@@ -2156,6 +2012,29 @@ export default function Home() {
                 <p className="text-xs text-slate-300">Connecté en tant que</p>
                 <p className="font-black">{currentPlayer?.name}</p>
               </div>
+            </div>
+
+            <div className="mt-5 w-full max-w-md rounded-[2rem] border border-red-300/20 bg-red-950/25 p-4 ring-1 ring-red-300/10">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-red-200">
+                Zone de danger
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmText("");
+                  setShowDeleteAccountModal(true);
+                }}
+                disabled={deleteLoading}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-4 font-black text-white shadow-xl shadow-red-950/40 ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:opacity-50"
+              >
+                <Trash2 className="h-5 w-5" />
+                {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
+              </button>
+
+              <p className="mt-3 text-xs font-bold text-red-100/80">
+                Sécurité activée : double confirmation + saisie obligatoire du mot SUPPRIMER.
+              </p>
             </div>
 
             <p className="mt-3 max-w-2xl text-lg text-slate-200">
@@ -2795,26 +2674,14 @@ export default function Home() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={recalculateAndVerifyAllPoints}
-                        disabled={refreshing}
-                        className="rounded-2xl bg-yellow-400 px-5 py-4 font-black text-black shadow-xl disabled:opacity-60"
-                      >
-                        🔐 Audit complet des points
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={clearAllOfficialResults}
-                        disabled={refreshing}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-4 font-black text-white shadow-xl ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:opacity-60"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                        Effacer tous les résultats
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={recalculateAndVerifyAllPoints}
+                      disabled={refreshing}
+                      className="rounded-2xl bg-yellow-400 px-5 py-4 font-black text-black shadow-xl disabled:opacity-60"
+                    >
+                      🔐 Audit complet des points
+                    </button>
                   </div>
 
                   {pointsAudit && (
@@ -2906,8 +2773,7 @@ export default function Home() {
 
                             <button
                               onClick={() => saveOfficialScore(match.id)}
-                              disabled={refreshing}
-                              className={`rounded-2xl px-4 py-3 font-black transition disabled:opacity-60 ${
+                              className={`rounded-2xl px-4 py-3 font-black transition ${
                                 savedMatches[match.id]
                                   ? "bg-yellow-400 text-black"
                                   : "bg-emerald-600 text-white"
@@ -2916,16 +2782,6 @@ export default function Home() {
                               {savedMatches[match.id]
                                 ? "✅ Vérifié"
                                 : "Valider + vérifier"}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => clearMatchOfficialResult(match.id)}
-                              disabled={refreshing || (match.home_score === null && match.away_score === null)}
-                              className="inline-flex items-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                              Effacer résultat
                             </button>
                           </div>
 
@@ -3037,6 +2893,78 @@ export default function Home() {
           </>
         )}
 
+        {showDeleteAccountModal && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-[2rem] border border-red-300/20 bg-[#12091f] p-6 shadow-2xl ring-1 ring-red-300/10">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600/20 text-red-200">
+                  <Trash2 className="h-6 w-6" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black uppercase tracking-[0.25em] text-red-300">
+                    Suppression définitive
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-black text-white">
+                    Supprimer ton compte ?
+                  </h2>
+
+                  <p className="mt-3 text-sm font-bold leading-6 text-slate-300">
+                    Cette action supprimera ton profil joueur et tes pronostics. Elle est définitive.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-300/10">
+                <p className="text-sm font-black text-red-200">
+                  Pour confirmer, tape exactement :
+                </p>
+                <p className="mt-2 rounded-xl bg-black/30 px-4 py-3 text-center text-lg font-black tracking-[0.25em] text-white">
+                  SUPPRIMER
+                </p>
+
+                <input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Tape SUPPRIMER"
+                  autoFocus
+                  className="mt-4 w-full rounded-2xl bg-[#0b0513]/90 p-4 text-center text-lg font-black text-white outline-none ring-1 ring-white/10 focus:ring-red-400"
+                />
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (deleteLoading) return;
+                    setShowDeleteAccountModal(false);
+                    setDeleteConfirmText("");
+                  }}
+                  disabled={deleteLoading}
+                  className="rounded-2xl bg-white/10 px-5 py-4 font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+
+                <button
+                  type="button"
+                  onClick={deleteMyAccount}
+                  disabled={deleteLoading || deleteConfirmText !== "SUPPRIMER"}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-4 font-black text-white shadow-xl shadow-red-950/40 ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deleteLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-5 w-5" />
+                  )}
+                  {deleteLoading ? "Suppression..." : "Supprimer définitivement"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <footer className="rounded-[2rem] border border-white/15 bg-[#12091f]/80 p-5 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-3 text-sm font-bold text-slate-300 md:flex-row md:items-center md:justify-center">
             <a
@@ -3052,16 +2980,6 @@ export default function Home() {
             >
               Confidentialité
             </a>
-
-            <button
-              type="button"
-              onClick={deleteMyAccount}
-              disabled={deleteLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600/80 px-4 py-3 font-black text-white ring-1 ring-red-300/20 transition hover:bg-red-600 disabled:opacity-50"
-            >
-              <Trash2 className="h-5 w-5" />
-              {deleteLoading ? "Suppression..." : "Supprimer mon compte"}
-            </button>
           </div>
         </footer>
       </div>
