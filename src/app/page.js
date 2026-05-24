@@ -2058,7 +2058,7 @@ export default function Home() {
                 disabled={deleteLoading}
                 className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 font-black text-white shadow-xl shadow-red-950/40 ring-1 ring-red-300/20 transition hover:bg-red-500 disabled:opacity-50"
               >
-                <Trash2 className="h-5 w-5" />
+                <span>🗑️</span>
                 {deleteLoading ? "..." : "Supprimer"}
               </button>
             </div>
