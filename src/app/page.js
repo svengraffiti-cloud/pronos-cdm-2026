@@ -394,7 +394,7 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const APP_VERSION = "2026-05-19-paris-en-cours-v1";
+  const APP_VERSION = "2026-05-24-delete-account-v1";
 
   const roundLabels = {
     R32: "16es de finale",
