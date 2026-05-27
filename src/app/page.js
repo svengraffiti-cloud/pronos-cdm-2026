@@ -824,12 +824,17 @@ export default function Home() {
           .eq("user_id", session.user.id);
       }
 
+      const subscriptionJson = subscription.toJSON();
+
       const { error: subscriptionError } = await supabase
         .from("push_subscriptions")
         .insert({
           user_id: session?.user?.id,
           player_id: currentPlayer?.id,
-          subscription: subscription.toJSON(),
+          endpoint: subscriptionJson.endpoint,
+          p256dh: subscriptionJson.keys?.p256dh,
+          auth: subscriptionJson.keys?.auth,
+          subscription: subscriptionJson,
         });
 
       if (subscriptionError) {
@@ -840,25 +845,9 @@ export default function Home() {
       setNotificationsEnabled(true);
       alert("Notifications web activées.");
     } catch (error) {
-      console.error("ERREUR NOTIFICATIONS COMPLETE :", error);
-
+      console.error(error);
       setNotificationsEnabled(false);
-
-      let errorMessage = "Erreur inconnue";
-
-      try {
-        if (error?.message) {
-          errorMessage = error.message;
-        } else if (typeof error === "string") {
-          errorMessage = error;
-        } else {
-          errorMessage = JSON.stringify(error);
-        }
-      } catch (readError) {
-        errorMessage = "Impossible de lire l'erreur";
-      }
-
-      alert("ERREUR NOTIFICATIONS : " + errorMessage);
+      alert("Erreur activation notifications.");
     }
   }
 
