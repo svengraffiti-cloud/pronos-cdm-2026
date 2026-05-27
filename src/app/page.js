@@ -767,6 +767,19 @@ export default function Home() {
         return;
       }
 
+      const registration = await navigator.serviceWorker.ready;
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: ""
+      });
+
+      await supabase.from("push_subscriptions").insert({
+        user_id: session?.user?.id,
+        player_id: currentPlayer?.id,
+        subscription
+      });
+
       setNotificationsEnabled(true);
       alert("Notifications web activées.");
     } catch (error) {
