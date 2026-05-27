@@ -694,6 +694,20 @@ export default function Home() {
 
 
 
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; i += 1) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+
+    return outputArray;
+  }
+
   async function requestNotifications() {
     try {
       if (typeof window === "undefined") return;
@@ -767,18 +781,58 @@ export default function Home() {
         return;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      if (!("serviceWorker" in navigator)) {
+        setNotificationsEnabled(false);
+        alert("Service worker non disponible.");
+        return;
+      }
+
+      if (!("PushManager" in window)) {
+        setNotificationsEnabled(false);
+        alert("Push notifications non disponibles sur ce navigateur.");
+        return;
+      }
+
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+      if (!vapidPublicKey) {
+        console.error("NEXT_PUBLIC_VAPID_PUBLIC_KEY manquante.");
+        setNotificationsEnabled(false);
+        alert("Clé notifications manquante côté serveur.");
+        return;
+      }
+
+      const registration =
+        (await navigator.serviceWorker.getRegistration()) ||
+        (await navigator.serviceWorker.register("/sw.js"));
+
+      const existingSubscription = await registration.pushManager.getSubscription();
+
+      if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+      }
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: ""
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
 
-      await supabase.from("push_subscriptions").insert({
-        user_id: session?.user?.id,
-        player_id: currentPlayer?.id,
-        subscription
-      });
+      const { error: subscriptionError } = await supabase
+        .from("push_subscriptions")
+        .upsert(
+          {
+            user_id: session?.user?.id,
+            player_id: currentPlayer?.id,
+            subscription: subscription.toJSON(),
+          },
+          {
+            onConflict: "user_id",
+          }
+        );
+
+      if (subscriptionError) {
+        throw subscriptionError;
+      }
 
       setNotificationsEnabled(true);
       alert("Notifications web activées.");
@@ -983,7 +1037,7 @@ export default function Home() {
           return;
         }
 
-        const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+        const registration = await navigator.serviceWorker.getRegistration();
         const subscription = await registration?.pushManager.getSubscription();
 
         setNotificationsEnabled(Boolean(subscription));
