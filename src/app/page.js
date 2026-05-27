@@ -817,20 +817,23 @@ export default function Home() {
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
 
+      if (session?.user?.id) {
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("user_id", session.user.id);
+      }
+
       const { error: subscriptionError } = await supabase
         .from("push_subscriptions")
-        .upsert(
-          {
-            user_id: session?.user?.id,
-            player_id: currentPlayer?.id,
-            subscription: subscription.toJSON(),
-          },
-          {
-            onConflict: "user_id",
-          }
-        );
+        .insert({
+          user_id: session?.user?.id,
+          player_id: currentPlayer?.id,
+          subscription: subscription.toJSON(),
+        });
 
       if (subscriptionError) {
+        console.error("Erreur sauvegarde subscription :", subscriptionError);
         throw subscriptionError;
       }
 
