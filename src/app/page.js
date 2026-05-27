@@ -396,21 +396,20 @@ export default function Home() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [savedMatches, setSavedMatches] = useState({});
   const [pointsAudit, setPointsAudit] = useState(null);
-  const [pointsAudit, setPointsAudit] = useState(null);
 
-useEffect(() => {
-  if (typeof window === "undefined") return;
-  if (!("serviceWorker" in navigator)) return;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
 
-  navigator.serviceWorker
-    .register("/sw.js")
-    .then((registration) => {
-      console.log("Service worker enregistré :", registration.scope);
-    })
-    .catch((error) => {
-      console.error("Erreur service worker :", error);
-    });
-}, []);
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("Service worker enregistré :", registration.scope);
+      })
+      .catch((error) => {
+        console.error("Erreur service worker :", error);
+      });
+  }, []);
   const APP_VERSION = "2026-05-24-delete-account-v3-red-button-header";
 
   const roundLabels = {
