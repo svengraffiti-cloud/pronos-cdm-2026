@@ -845,9 +845,25 @@ export default function Home() {
       setNotificationsEnabled(true);
       alert("Notifications web activées.");
     } catch (error) {
-      console.error(error);
+      console.error("ERREUR NOTIFICATIONS COMPLETE :", error);
+
       setNotificationsEnabled(false);
-      alert("Erreur activation notifications.");
+
+      let errorMessage = "Erreur inconnue";
+
+      try {
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (typeof error === "string") {
+          errorMessage = error;
+        } else {
+          errorMessage = JSON.stringify(error);
+        }
+      } catch (readError) {
+        errorMessage = "Impossible de lire l'erreur";
+      }
+
+      alert("ERREUR NOTIFICATIONS : " + errorMessage);
     }
   }
 
