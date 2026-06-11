@@ -244,7 +244,7 @@ const MatchCard = memo(function MatchCard({
 
       {!locked && (
         <p className="mt-1 text-xs font-bold text-slate-400">
-          Verrouillage définitif 30 min avant le match.
+          Verrouillage définitif 45 secondes avant le match.
         </p>
       )}
 
@@ -276,7 +276,7 @@ const MatchCard = memo(function MatchCard({
             ? "Paris fermé définitivement."
             : noModificationLeft
             ? "Tu as déjà utilisé ta seule modification possible."
-            : "Il te reste une seule modification possible jusqu’à 30 min avant le début du match."}
+            : "Il te reste une seule modification possible jusqu’à 45 secondes avant le début du match."}
         </p>
       )}
 
@@ -684,7 +684,7 @@ export default function Home() {
     return qualified;
   }, [groupNames, groupStandingsByName]);
   function isMatchLocked(matchDate) {
-    const lockTime = new Date(matchDate).getTime() - 30 * 60 * 1000;
+    const lockTime = new Date(matchDate).getTime() - 45 * 1000;
     return Date.now() >= lockTime;
   }
   function isMatchFinished(match) {
@@ -1507,7 +1507,7 @@ export default function Home() {
       }
 
       if (isMatchLocked(match.match_date)) {
-        alert("Paris fermés définitivement 30 min avant le coup d'envoi.");
+        alert("Paris fermés définitivement 45 secondes avant le coup d'envoi.");
         return;
       }
 
@@ -2398,7 +2398,7 @@ export default function Home() {
                     <div>
                       <h2 className="text-2xl font-black">Ta feuille de pronostic</h2>
                       <p className="text-sm text-slate-300">
-                        Tu ne peux remplir que tes propres pronos. Tu as une seule modification possible, puis les paris se verrouillent définitivement 30 min avant le coup d’envoi.
+                        Tu ne peux remplir que tes propres pronos. Tu as une seule modification possible, puis les paris se verrouillent définitivement 45 secondes avant le coup d’envoi.
                       </p>
                     </div>
                   </div>
