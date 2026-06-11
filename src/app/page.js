@@ -367,7 +367,6 @@ export default function Home() {
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-  const [inviteAccessCode, setInviteAccessCode] = useState("");
   const [authName, setAuthName] = useState("");
   const [authAvatarFile, setAuthAvatarFile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1180,24 +1179,6 @@ export default function Home() {
 
         if (error) throw error;
       } else {
-        const inviteResponse = await fetch("/api/check-invite-code", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            code: inviteAccessCode,
-          }),
-        // Code famille : PAPY2026
-        });
-
-        const inviteResult = await inviteResponse.json().catch(() => null);
-
-        if (!inviteResponse.ok || !inviteResult?.valid) {
-          setAuthError(inviteResult?.error || "Code d’accès famille (PAPY2026) incorrect.");
-          return;
-        }
-
         const { data, error } = await supabase.auth.signUp({
           email: authEmail,
           password: authPassword,
@@ -2052,18 +2033,6 @@ export default function Home() {
                     />
                   </label>
 
-                  <input
-                    value={inviteAccessCode}
-                    onChange={(e) => setInviteAccessCode(e.target.value)}
-                    type="text"
-                    placeholder="Code d’accès famille"
-                    required
-                    className="w-full rounded-2xl bg-[#0b0513]/90 p-4 text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400"
-                  />
-
-                  <p className="rounded-2xl bg-emerald-500/10 p-3 text-xs font-bold text-emerald-200 ring-1 ring-emerald-300/10">
-                    Ce code est demandé uniquement à la création du compte. Les comptes déjà créés se connectent normalement.
-                  </p>
                 </>
               )}
 
