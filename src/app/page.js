@@ -409,7 +409,7 @@ export default function Home() {
         console.error("Erreur service worker :", error);
       });
   }, []);
-  const APP_VERSION = "2026-05-24-delete-account-v3-red-button-header";
+  const APP_VERSION = "2026-06-25-fix-predictions-range";
 
   const roundLabels = {
     R32: "16es de finale",
@@ -932,7 +932,8 @@ export default function Home() {
             .from("predictions")
             .select(
               "id, player_id, match_id, predicted_home, predicted_away, points, edit_count"
-            ),
+            )
+            .range(0, 5000),
           supabase
             .from("teams")
             .select("id, name, group_name")
